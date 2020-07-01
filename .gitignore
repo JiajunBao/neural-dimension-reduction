@@ -5,6 +5,10 @@ __pycache__/
 # C extensions
 *.so
 
+# data
+data
+artificial3_10_200.csv
+
 # Distribution / packaging
 .Python
 env/
