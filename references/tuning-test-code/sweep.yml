@@ -1,0 +1,4 @@
+cmd: 'python main.py'
+
+hparams:
+  text: ['job1', 'job2']
