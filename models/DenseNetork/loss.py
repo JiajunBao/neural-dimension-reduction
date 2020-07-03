@@ -5,17 +5,17 @@ from torch.nn import functional as F
 STABLE_FACTOR = 1e-8
 
 
-def kl_div_add_mse_loss(input, target, alpha, reduction='sum'):
+def kl_div_add_mse_loss(logit, target, alpha, reduction='sum'):
     """
     calculate the sum of kl divergence and mse loss
-    :param input: p in the formula (P20-2)
+    :param logit: p in the formula (P20-2)
     :param target: q in the formula (P20-2)
     :param alpha: the constant that balances the influence of two losses
     :param reduction: "sum", "mean" or "batchmean": same as https://pytorch.org/docs/stable/nn.functional.html#kl-div
     :return: torch.tensor of the shape (,)
     """
     mse_loss = nn.MSELoss(reduction=reduction)
-    return F.kl_div(input=input, target=target, reduction=reduction) + alpha * mse_loss(input, target)
+    return F.kl_div(input=logit, target=target, reduction=reduction) + alpha * mse_loss(input=logit, target=target)
 
 
 def input_inverse_similarity(x, anchor_idx, min_dist_square, approximate_min_dist=True):
