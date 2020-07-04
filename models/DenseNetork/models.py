@@ -12,7 +12,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import Dataset
 from runx.logx import logx
-from sklearn.metrics import f1_score
 from torch.utils.data import DataLoader
 from tqdm.auto import tqdm
 
@@ -260,8 +259,8 @@ class Solver(object):
                 # self.scheduler.step()  # Update learning rate schedule
                 if (batch_idx + 1) % steps_per_eval == 0:
                     # validate and save checkpoints
-                    # mean_loss, metrics_scores = self.validate(self.dev_dataloader)
-                    # logx.metric('val', metrics_scores, global_step)
+                    outputs, metrics_scores = self.validate(self.dev_dataloader)
+                    logx.metric('val', metrics_scores, global_step)
                     if self.n_gpu > 1:
                         save_dict = {"model_construct_dict": self.model.model_construct_dict,
                                      "model_state_dict": self.model.module.state_dict(),
@@ -394,7 +393,7 @@ class Solver(object):
         :param n_epoch:
         :return:
         """
-        # Prepare optimizer and schedule (linear warmup and decay)
+        # Prepare optimizer and schedule (linear warm-up and decay)
         # no_decay = ['bias', 'LayerNorm.weight']
         optimizer = torch.optim.Adam(params=named_parameters, lr=learning_rate, weight_decay=weight_decay)
         '''

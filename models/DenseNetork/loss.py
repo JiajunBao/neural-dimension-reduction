@@ -1,6 +1,5 @@
 import torch
-# from torch import nn
-# from torch.nn import functional as F
+
 
 STABLE_FACTOR = 1e-8
 
@@ -27,7 +26,6 @@ def kl_div_add_mse_loss(p, q, lam):
     :param p: p in the formula (P20-2) output similarities
     :param q: q in the formula (P20-2) input similarities
     :param lam: the constant that balances the influence of two losses
-    :param reduction: "sum", "mean" or "batchmean": same as https://pytorch.org/docs/stable/nn.functional.html#kl-div
     :return: torch.tensor of the shape (,)
     """
     return torch.sum(p * torch.log(p / q)) + lam * torch.sum((p - q) ** 2)
