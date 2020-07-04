@@ -1,6 +1,5 @@
 import torch
 
-
 STABLE_FACTOR = 1e-8
 
 
