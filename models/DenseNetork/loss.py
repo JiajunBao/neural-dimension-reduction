@@ -66,6 +66,6 @@ def output_inverse_similarity(y, anchor_idx):
     :param anchor_idx: torch.tensor (n, m)
     :return:
     """
-    y = y.unsqueeze(dim=1)  # (n, 1, d2)
     anchors = y[anchor_idx, :]  # (n, m, d2)
+    y = y.unsqueeze(dim=1)  # (n, 1, d2)
     return 1 / (1 + torch.sum((y - anchors).square(dim=2)))
