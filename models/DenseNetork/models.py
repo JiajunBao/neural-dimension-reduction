@@ -373,8 +373,12 @@ class Solver(object):
         encoded_data_path = input_dir / f'{split_name}.pth.tar'
         if encoded_data_path.is_file():
             dataset = torch.load(encoded_data_path)
+            print(f'load dataset from {encoded_data_path}')
         else:
             dataset = VecDataSet.from_df(input_dir / f'{split_name}.csv')
+            print(f'construct dataset from dataframe')
+            torch.save(dataset, encoded_data_path)
+            print(f'save dataset at {encoded_data_path}')
         return DataLoader(dataset, shuffle=False, batch_size=batch_size, pin_memory=True)
 
     # def infer(self, data_path):
