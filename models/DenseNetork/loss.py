@@ -1,24 +1,38 @@
 import torch
-from torch import nn
-from torch.nn import functional as F
+# from torch import nn
+# from torch.nn import functional as F
 
 STABLE_FACTOR = 1e-8
 
 
-def kl_div_add_mse_loss(logit, target, alpha, reduction='sum'):
+def nearest_neighbors(x):
+    """
+    calculate the nearest neighbors of x, return the
+    :param x:
+    :return:
+            dist: torch.tensor (n, n) nearest neighbor rankings,
+                the distance between i and other points is sorted from low to high, the index is recorded.
+            sorted_dist: torch.tensor (n, n) whole distance matrix
+            indices: torch.tensor (n, n)
+    """
+    dist = torch.cdist(x1=x, x2=x, p=2)  # (n, n)
+    sorted_dist, indices = torch.sort(dist, dim=1, descending=False)
+    return dist, sorted_dist, indices
+
+
+def kl_div_add_mse_loss(p, q, lam):
     """
     calculate the sum of kl divergence and mse loss
-    :param logit: p in the formula (P20-2)
-    :param target: q in the formula (P20-2)
-    :param alpha: the constant that balances the influence of two losses
+    :param p: p in the formula (P20-2) output similarities
+    :param q: q in the formula (P20-2) input similarities
+    :param lam: the constant that balances the influence of two losses
     :param reduction: "sum", "mean" or "batchmean": same as https://pytorch.org/docs/stable/nn.functional.html#kl-div
     :return: torch.tensor of the shape (,)
     """
-    mse_loss = nn.MSELoss(reduction=reduction)
-    return F.kl_div(input=logit, target=target, reduction=reduction) + alpha * mse_loss(input=logit, target=target)
+    return torch.sum(p * torch.log(p / q)) + lam * torch.sum((p - q) ** 2)
 
 
-def input_inverse_similarity(x, anchor_idx, min_dist_square, approximate_min_dist=True):
+def input_inverse_similarity(x, anchor_idx, min_dist_square, approximate_min_dist=False):
     """
     calculate inverse similarity for inputs:
         1 / ((d_{in}(x_i, x_j))^2 / d_i^2 + eps)
@@ -36,8 +50,10 @@ def input_inverse_similarity(x, anchor_idx, min_dist_square, approximate_min_dis
     """
     y = x[anchor_idx, :]  # (n, m, d)
     din = (x.squeeze(dim=1) - y).square().sum(dim=2)   # (n, m)
-    dmin_x = min_dist_square.squeeze(dim=1)  # (n, )
+    dmin_x = min_dist_square.squeeze(dim=1)  # (n, 1)
     dmin_y = min_dist_square[anchor_idx]  # (n, m)
+    if approximate_min_dist:
+        raise NotImplementedError("min_dist_square should give ground-true values")
     sigma_xy = 1 / (din / dmin_x + STABLE_FACTOR)
     sigma_yx = 1 / (din / dmin_y + STABLE_FACTOR)
     return (sigma_xy + sigma_yx) / 2
