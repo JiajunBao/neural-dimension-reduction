@@ -394,8 +394,15 @@ class Solver(object):
         :return:
         """
         # Prepare optimizer and schedule (linear warm-up and decay)
-        # no_decay = ['bias', 'LayerNorm.weight']
-        optimizer = torch.optim.Adam(params=named_parameters, lr=learning_rate, weight_decay=weight_decay)
+        no_decay = ['bias', 'LayerNorm.weight']
+        optimizer_grouped_parameters = [
+            {'params': [p for n, p in named_parameters if not any(
+                nd in n for nd in no_decay) and p.requires_grad], 'weight_decay': weight_decay},
+            {'params': [p for n, p in named_parameters if any(
+                nd in n for nd in no_decay) and p.requires_grad], 'weight_decay': 0.0}
+        ]
+
+        optimizer = torch.optim.AdamW(params=optimizer_grouped_parameters, lr=learning_rate, weight_decay=weight_decay)
         '''
         # get a linear scheduler
         num_steps_epoch = len(train_dataloader)
