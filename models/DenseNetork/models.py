@@ -236,7 +236,7 @@ class Solver(object):
         outputs = self.__forward_batch_plus(dataloader)
         metrics_scores = self.get_scores(q=self.dev_dataloader.dataset.q.to(self.device),
                                          output_embeddings=outputs,
-                                         anchor_idx=dataloader.dataset.anchor_idx)
+                                         anchor_idx=dataloader.dataset.anchor_idx.to(self.device))
         return outputs, metrics_scores
 
     def __train_per_epoch(self, epoch_idx, steps_per_eval):
