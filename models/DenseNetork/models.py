@@ -292,7 +292,7 @@ class Solver(object):
         self.model.train()
         outputs = self.__forwarding_step(batch)
         p = output_inverse_similarity(y=outputs, anchor_idx=self.train_dataloader.dataset.anchor_idx)
-        loss = self.criterion(p, self.train_dataloader.dataset.q, lam=1)
+        loss = self.criterion(p, self.train_dataloader.dataset.q.to(self.device), lam=1)
         return loss
 
     def __forwarding_step(self, batch):
