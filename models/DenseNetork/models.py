@@ -234,7 +234,7 @@ class Solver(object):
 
     def validate(self, dataloader):
         outputs = self.__forward_batch_plus(dataloader)
-        metrics_scores = self.get_scores(q=self.dev_dataloader.dataset.q,
+        metrics_scores = self.get_scores(q=self.dev_dataloader.dataset.q.to(self.device),
                                          output_embeddings=outputs,
                                          anchor_idx=dataloader.dataset.anchor_idx)
         return outputs, metrics_scores
