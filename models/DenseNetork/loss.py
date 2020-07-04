@@ -1,6 +1,6 @@
 import torch
 
-STABLE_FACTOR = 1e-8
+STABLE_FACTOR = 1e-7
 
 
 def nearest_neighbors(x):
