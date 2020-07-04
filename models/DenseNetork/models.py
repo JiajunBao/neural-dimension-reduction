@@ -43,7 +43,7 @@ class VecDataSet(Dataset):
                  q: input_similarity
         """
         dist, sorted_dist, indices = nearest_neighbors(x)
-        ground_min_dist_square = sorted_dist  # the 0-th column is the distance to oneself
+        ground_min_dist_square = sorted_dist[:, 0]  # the 0-th column is the distance to oneself
         anchor_idx = indices
         q = input_inverse_similarity(x,
                                      anchor_idx=anchor_idx,  # (n, n - 1)
