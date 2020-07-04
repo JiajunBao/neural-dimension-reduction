@@ -48,8 +48,8 @@ def input_inverse_similarity(x, anchor_idx, min_dist_square, approximate_min_dis
     :return: q: qij in formula (P20-3) torch.tensor of the shape (n, m)
     """
     y = x[anchor_idx, :]  # (n, m, d)
-    din = (x.squeeze(dim=1) - y).square().sum(dim=2)   # (n, m)
-    dmin_x = min_dist_square.squeeze(dim=1)  # (n, 1)
+    din = (x.unsqueeze(dim=1) - y).square().sum(dim=2)   # (n, m)
+    dmin_x = min_dist_square.unsqueeze(dim=1)  # (n, 1)
     dmin_y = min_dist_square[anchor_idx]  # (n, m)
     if approximate_min_dist:
         raise NotImplementedError("min_dist_square should give ground-true values")
@@ -66,6 +66,6 @@ def output_inverse_similarity(y, anchor_idx):
     :param anchor_idx: torch.tensor (n, m)
     :return:
     """
-    y = y.squeeze(dim=1)  # (n, 1, d2)
+    y = y.unsqueeze(dim=1)  # (n, 1, d2)
     anchors = y[anchor_idx, :]  # (n, m, d2)
     return 1 / (1 + torch.sum((y - anchors).square(dim=2)))
