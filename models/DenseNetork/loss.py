@@ -14,6 +14,7 @@ def nearest_neighbors(x):
             sorted_dist: torch.tensor (n, n - 1) whole distance matrix;
             indices: torch.tensor (n, n - 1);
     """
+    print('nearest_neighbors: x', x.device)
     dist = torch.cdist(x1=x, x2=x, p=2)  # (n, n)
     sorted_dist, indices = torch.sort(dist, dim=1, descending=False)
     return dist, sorted_dist[:, 1:], indices[:, 1:]
@@ -27,6 +28,7 @@ def kl_div_add_mse_loss(p, q, lam):
     :param lam: the constant that balances the influence of two losses
     :return: torch.tensor of the shape (,)
     """
+    print('kl_div_add_mse_loss: p, q', p.device, q.device)
     return torch.sum(p * torch.log(p / q)) + lam * torch.sum((p - q) ** 2)
 
 
@@ -46,6 +48,8 @@ def input_inverse_similarity(x, anchor_idx, min_dist_square, approximate_min_dis
             if the min_dist_square needs to be updated
     :return: q: qij in formula (P20-3) torch.tensor of the shape (n, m)
     """
+    print('input_inverse_similarity: anchor_idx', anchor_idx.device)
+    print('input_inverse_similarity: min_dist_square', min_dist_square.device)
     y = x[anchor_idx, :]  # (n, m, d)
     din = (x.unsqueeze(dim=1) - y).square().sum(dim=2)   # (n, m)
     dmin_x = min_dist_square.unsqueeze(dim=1)  # (n, 1)
@@ -65,6 +69,8 @@ def output_inverse_similarity(y, anchor_idx):
     :param anchor_idx: torch.tensor (n, m)
     :return:
     """
+    print('output_inverse_similarity: y', y.device)
+    print('output_inverse_similarity: anchor_idx', anchor_idx.device)
     anchors = y[anchor_idx, :]  # (n, m, d2)
     y = y.unsqueeze(dim=1)  # (n, 1, d2)
     return 1 / (1 + torch.sum((y - anchors).square(), dim=2))
