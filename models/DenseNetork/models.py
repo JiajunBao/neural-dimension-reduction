@@ -1,20 +1,44 @@
 """models and solvers"""
+import argparse
 import os
 import random
-from pathlib import Path
 from collections import OrderedDict
-import argparse
+from pathlib import Path
 
+import numpy
+import pandas as pd
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from tqdm.auto import tqdm
-from torch.utils.data import DataLoader
-import numpy
+from torch.utils.data import Dataset
 from runx.logx import logx
 from sklearn.metrics import f1_score
+from torch.utils.data import DataLoader
+from tqdm.auto import tqdm
 
-from models.DenseNetork.loss import kl_div_add_mse_loss, input_inverse_similarity, output_inverse_similarity, nearest_neighbors
+from models.DenseNetork.loss import kl_div_add_mse_loss, input_inverse_similarity, output_inverse_similarity, \
+    nearest_neighbors
+
+
+class VecDataSet(Dataset):
+    def __init__(self, x):
+        self.x = x
+
+    @classmethod
+    def from_df(cls, path_to_dataframe):
+        x = pd.read_csv(path_to_dataframe)
+        return cls(x)
+
+    @classmethod
+    def from_tensor(cls, path_to_tensor):
+        x = torch.load(path_to_tensor)
+        return cls(x)
+
+    def __len__(self):
+        return self.x.shape[0]
+
+    def __getitem__(self, idx):
+        return self.x[idx]
 
 
 class Net(nn.Module):
@@ -146,7 +170,6 @@ class Solver(object):
 
         # load model
         model = model_constructor.from_pretrained(pretrained_system_name_or_path)  #
-
 
         # load arguments
         solver_args = meta["solver_construct_params_dict"]
