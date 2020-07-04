@@ -26,7 +26,7 @@ class VecDataSet(Dataset):
 
     @classmethod
     def from_df(cls, path_to_dataframe):
-        x = pd.read_csv(path_to_dataframe)
+        x = torch.from_numpy(pd.read_csv(path_to_dataframe).to_numpy())
         return cls(x)
 
     @classmethod
