@@ -231,7 +231,7 @@ class Solver(object):
 
     def train(self, steps_per_eval):
         # TensorBoard
-        for epoch_idx in range(self.n_epoch):
+        for epoch_idx in tqdm(range(self.n_epoch)):
             self.__train_per_epoch(epoch_idx, steps_per_eval)
 
     def validate(self, dataloader):
@@ -242,43 +242,43 @@ class Solver(object):
         return outputs, metrics_scores
 
     def __train_per_epoch(self, epoch_idx, steps_per_eval):
-        with tqdm(total=len(self.train_dataloader), desc=f"Epoch {epoch_idx}") as pbar:
-            for batch_idx, batch in enumerate(self.train_dataloader):
-                # assume that the whole input matrix fits the GPU memory
-                global_step = epoch_idx * len(self.train_dataloader) + batch_idx
-                loss = self.__training_step(batch)
+        # with tqdm(total=len(self.train_dataloader), desc=f"Epoch {epoch_idx}") as pbar:
+        for batch_idx, batch in enumerate(self.train_dataloader):
+            # assume that the whole input matrix fits the GPU memory
+            global_step = epoch_idx * len(self.train_dataloader) + batch_idx
+            loss = self.__training_step(batch)
+            if self.n_gpu > 1:
+                loss = loss.mean()  # mean() to average on multi-gpu.
+            loss.backward()
+            if self.scheduler:
+                logx.metric('train', {"tr_loss": loss.item(),
+                                      "learning_rate": self.scheduler.get_last_lr()[0]}, global_step)
+            else:
+                logx.metric('train', {"tr_loss": loss.item()}, global_step)
+            # pbar.set_postfix_str(f"tr_loss: {loss.item():.5f}")
+            # update weights
+            self.optimizer.step()
+            # self.scheduler.step()  # Update learning rate schedule
+            if (batch_idx + 1) % steps_per_eval == 0:
+                # validate and save checkpoints
+                outputs, metrics_scores = self.validate(self.dev_dataloader)
+                logx.metric('val', metrics_scores, global_step)
                 if self.n_gpu > 1:
-                    loss = loss.mean()  # mean() to average on multi-gpu.
-                loss.backward()
-                if self.scheduler:
-                    logx.metric('train', {"tr_loss": loss.item(),
-                                          "learning_rate": self.scheduler.get_last_lr()[0]}, global_step)
+                    save_dict = {"model_construct_dict": self.model.model_construct_dict,
+                                 "model_state_dict": self.model.module.state_dict(),
+                                 "solver_construct_params_dict": self.construct_param_dict,
+                                 "optimizer": self.optimizer.state_dict()}
                 else:
-                    logx.metric('train', {"tr_loss": loss.item()}, global_step)
-                pbar.set_postfix_str(f"tr_loss: {loss.item():.5f}")
-                # update weights
-                self.optimizer.step()
-                # self.scheduler.step()  # Update learning rate schedule
-                if (batch_idx + 1) % steps_per_eval == 0:
-                    # validate and save checkpoints
-                    outputs, metrics_scores = self.validate(self.dev_dataloader)
-                    logx.metric('val', metrics_scores, global_step)
-                    if self.n_gpu > 1:
-                        save_dict = {"model_construct_dict": self.model.model_construct_dict,
-                                     "model_state_dict": self.model.module.state_dict(),
-                                     "solver_construct_params_dict": self.construct_param_dict,
-                                     "optimizer": self.optimizer.state_dict()}
-                    else:
-                        save_dict = {"model_construct_dict": self.model.model_construct_dict,
-                                     "model_state_dict": self.model.state_dict(),
-                                     "solver_construct_params_dict": self.construct_param_dict,
-                                     "optimizer": self.optimizer.state_dict()}
-                    #  TODO: here we use training loss as metrics; switch to dev loss in the future
-                    logx.save_model(save_dict,
-                                    metric=loss.item(),
-                                    epoch=global_step,
-                                    higher_better=False)
-                pbar.update(1)
+                    save_dict = {"model_construct_dict": self.model.model_construct_dict,
+                                 "model_state_dict": self.model.state_dict(),
+                                 "solver_construct_params_dict": self.construct_param_dict,
+                                 "optimizer": self.optimizer.state_dict()}
+                #  TODO: here we use training loss as metrics; switch to dev loss in the future
+                logx.save_model(save_dict,
+                                metric=loss.item(),
+                                epoch=global_step,
+                                higher_better=False)
+                # pbar.update(1)
 
     def batch_to_device(self, batch):
         return batch.to(self.device)
