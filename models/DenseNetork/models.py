@@ -294,7 +294,7 @@ class Solver(object):
         self.model.zero_grad()  # reset gradient
         self.model.train()
         outputs = self.__forwarding_step(batch)
-        p = output_inverse_similarity(y=outputs, anchor_idx=self.train_dataloader.dataset.anchor_idx)
+        p = output_inverse_similarity(y=outputs, anchor_idx=self.train_dataloader.dataset.anchor_idx.to(self.device))
         loss = self.criterion(p, self.train_dataloader.dataset.q.to(self.device), lam=1)
         return loss
 
