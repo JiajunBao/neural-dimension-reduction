@@ -22,7 +22,9 @@ from models.DenseNetork.loss import kl_div_add_mse_loss, input_inverse_similarit
 class VecDataSet(Dataset):
     def __init__(self, x):
         self.x = x
-        self.anchor_idx, self.q = self.precomputing(x)
+        device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+        a, q = self.precomputing(x.to(device))
+        self.anchor_idx, self.q = a.cpu(), q.cpu()
 
     @classmethod
     def from_df(cls, path_to_dataframe):
