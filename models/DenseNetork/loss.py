@@ -12,12 +12,13 @@ def nearest_neighbors(x):
     :return:
             dist: torch.tensor (n, n) nearest neighbor rankings,
                 the distance between i and other points is sorted from low to high, the index is recorded.
-            sorted_dist: torch.tensor (n, n) whole distance matrix
-            indices: torch.tensor (n, n)
+            In the below return values, the original first column contains the points themselves, we remove them.
+            sorted_dist: torch.tensor (n, n - 1) whole distance matrix;
+            indices: torch.tensor (n, n - 1);
     """
     dist = torch.cdist(x1=x, x2=x, p=2)  # (n, n)
     sorted_dist, indices = torch.sort(dist, dim=1, descending=False)
-    return dist, sorted_dist, indices
+    return dist, sorted_dist[:, 1:], indices[:, 1:]
 
 
 def kl_div_add_mse_loss(p, q, lam):

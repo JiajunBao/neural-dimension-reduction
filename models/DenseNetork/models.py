@@ -23,6 +23,7 @@ from models.DenseNetork.loss import kl_div_add_mse_loss, input_inverse_similarit
 class VecDataSet(Dataset):
     def __init__(self, x):
         self.x = x
+        self.anchor_idx, self.q = self.precomputing(x)
 
     @classmethod
     def from_df(cls, path_to_dataframe):
@@ -33,6 +34,22 @@ class VecDataSet(Dataset):
     def from_tensor(cls, path_to_tensor):
         x = torch.load(path_to_tensor)
         return cls(x)
+
+    @staticmethod
+    def precomputing(x):
+        """
+        compute ground true nearest neighbors
+        :param x:
+        :return: anchor_idx: each point has m points as anchors (in the case, we pick m near neighbors of x as anchors)
+                 q: input_similarity
+        """
+        dist, sorted_dist, indices = nearest_neighbors(x)
+        ground_min_dist_square = sorted_dist  # the 0-th column is the distance to oneself
+        anchor_idx = indices
+        q = input_inverse_similarity(x,
+                                     anchor_idx=anchor_idx,  # (n, n - 1)
+                                     min_dist_square=ground_min_dist_square)
+        return anchor_idx, q
 
     def __len__(self):
         return self.x.shape[0]
@@ -126,9 +143,6 @@ class Solver(object):
         logx.msg(f'Number of GPU: {self.n_gpu}.')
 
         self.criterion = kl_div_add_mse_loss
-        self.q = None
-        self.anchor_idx = None
-        # self.ground_min_dist_square = None  # if we use the ground values, we do not need to keep it here
 
         # optimizer and scheduler
         if self.train_dataloader:
@@ -165,7 +179,6 @@ class Solver(object):
                         input_dir=None, output_dir=None, **kwargs):
         # load checkpoints
         checkpoint = torch.load(pretrained_system_name_or_path)
-        state_dict = checkpoint['state_dict']
         meta = {k: v for k, v in checkpoint.items() if k != 'state_dict'}
 
         # load model
@@ -215,32 +228,17 @@ class Solver(object):
         if self.n_gpu > 0:
             torch.cuda.manual_seed_all(self.seed)
 
-    @staticmethod
-    def precomputing(x):
-        dist, sorted_dist, indices = nearest_neighbors(x)
-        ground_min_dist_square = sorted_dist[:, 1]  # the 0-th column is the distance to oneself
-        anchor_idx = indices[:, 1:]
-        q = input_inverse_similarity(x,
-                                     anchor_idx=anchor_idx,  # (n, n - 1)
-                                     min_dist_square=ground_min_dist_square)
-        return anchor_idx, q
-
     def train(self, steps_per_eval):
-        # pre-compute q and anchor indexes
-        self.anchor_idx, self.q = self.precomputing(self.train_dataloader.dataset.x)
         # TensorBoard
         for epoch_idx in range(self.n_epoch):
             self.__train_per_epoch(epoch_idx, steps_per_eval)
 
-    # def validate(self, dataloader):
-    #     preds, golds = self.__forward_batch_plus(dataloader)
-    #     preds = preds.detach().cpu()
-    #     golds = golds.detach().cpu()
-    #     mean_loss = self.criterion(preds, golds)  # num_of_label should be 1 for it to work
-    #     if self.n_gpu > 1:
-    #         mean_loss = mean_loss.mean()  # mean() to average on multi-gpu.
-    #     metrics_scores = self.get_scores(preds, golds)
-    #     return mean_loss, metrics_scores
+    def validate(self, dataloader):
+        outputs = self.__forward_batch_plus(dataloader)
+        metrics_scores = self.get_scores(q=self.dev_dataloader.dataset.q,
+                                         output_embeddings=outputs,
+                                         anchor_idx=dataloader.dataset.anchor_idx)
+        return outputs, metrics_scores
 
     def __train_per_epoch(self, epoch_idx, steps_per_eval):
         with tqdm(total=len(self.train_dataloader), desc=f"Epoch {epoch_idx}") as pbar:
@@ -294,8 +292,8 @@ class Solver(object):
         self.model.zero_grad()  # reset gradient
         self.model.train()
         outputs = self.__forwarding_step(batch)
-        p = output_inverse_similarity(y=outputs, anchor_idx=self.anchor_idx)
-        loss = self.criterion(p, self.q, lam=1)
+        p = output_inverse_similarity(y=outputs, anchor_idx=self.train_dataloader.dataset.anchor_idx)
+        loss = self.criterion(p, self.train_dataloader.dataset.q, lam=1)
         return loss
 
     def __forwarding_step(self, batch):
@@ -318,74 +316,72 @@ class Solver(object):
         outputs = self.model(batch_inputs)
         return outputs
 
-    @staticmethod
-    def get_scores(soft_preds, golds):
+    def get_scores(self, q, output_embeddings, anchor_idx):
         """
-        It is going to be registered.
-        :param soft_preds:
-        :param golds:
-        :return: a dictionary of all the measure
+
+        :param q: torch.tensor (n, ) input similarity
+        :param output_embeddings: torch.tensor (n, d2) output embeddings from the network
+        :param anchor_idx: (n, m) each point has m points as anchors
+        :return:
         """
-        loss_measure = nn.CrossEntropyLoss()
-        hard_preds = torch.argmax(F.softmax(soft_preds, dim=1), dim=1)
-        accuracy = float((hard_preds == golds).sum().item()) / golds.shape[0]
-        return {'CrossEntropy': loss_measure.forward(input=soft_preds, target=golds).item(),
-                'Accuracy': accuracy,
-                'F1_score': f1_score(y_true=golds, y_pred=hard_preds)}
+        scores = dict()
+        # calculate loss
+        p = output_inverse_similarity(y=output_embeddings, anchor_idx=anchor_idx)
+        scores['loss'] = self.criterion(p, q, lam=1)
+        # recalls
+        dist, sorted_dist, indices = nearest_neighbors(output_embeddings)
+        ground_nn = anchor_idx[:, 0].unsqueeze(dim=1)
+        for r in [1, 5, 10, 20]:
+            top_predictions = indices[:, :r]  # (n, r)
+            scores[f'Recall@{r}'] = \
+                torch.sum(top_predictions == ground_nn, dtype=torch.float).item() / ground_nn.shape[0]
+        return scores
 
     def __forward_batch_plus(self, dataloader, verbose=False):
         preds_list = list()
-        golds_list = list()
         if verbose:
             with tqdm(total=len(dataloader), desc=f"Evaluating: ") as pbar:
                 with torch.no_grad():
                     for batch_idx, batch in enumerate(dataloader):
-                        logits, labels = self.__forwarding_step(batch)
-                        preds_list.append(logits)
-                        golds_list.append(labels)
+                        outputs = self.__forwarding_step(batch)
+                        preds_list.append(outputs)
                         pbar.update(1)
         else:
             with torch.no_grad():
                 for batch_idx, batch in enumerate(dataloader):
-                    logits, labels = self.__forwarding_step(batch)
-                    preds_list.append(logits)
-                    golds_list.append(labels)
+                    outputs = self.__forwarding_step(batch)
+                    preds_list.append(outputs)
         # collect the whole chunk
-        preds = torch.cat(preds_list, dim=0).cpu()
-        golds = torch.cat(golds_list, dim=0).cpu()
-        return preds, golds
+        reduced_embeddings = torch.cat(preds_list, dim=0)
+        return reduced_embeddings
 
     @classmethod
     def get_train_dataloader(cls, input_dir, batch_size):
-        encoded_data_path = input_dir / 'train.pth.tar'
-        dataset = cls.__set_dataset(encoded_data_path)
-        train_dataloader = DataLoader(dataset, shuffle=True, batch_size=batch_size, pin_memory=True)
-        return train_dataloader
+        return cls.__set_dataset(input_dir, 'train', batch_size)
 
     @classmethod
     def get_dev_dataloader(cls, input_dir, batch_size):
-        encoded_data_path = input_dir / 'dev.pth.tar'
-        dataset = cls.__set_dataset(encoded_data_path)
-        dev_dataloader = DataLoader(dataset, shuffle=False, batch_size=batch_size, pin_memory=True)
-        return dev_dataloader
+        return cls.__set_dataset(input_dir, 'dev', batch_size)
 
     @classmethod
     def get_test_dataloader(cls, input_dir, batch_size):
-        encoded_data_path = input_dir / 'test.pth.tar'
-        dataset = cls.__set_dataset(encoded_data_path)
-        test_dataloader = DataLoader(dataset, shuffle=False, batch_size=batch_size, pin_memory=True)
-        return test_dataloader
+        return cls.__set_dataset(input_dir, 'test', batch_size)
 
     @classmethod
-    def __set_dataset(cls, encoded_data_path):
-        return torch.load(encoded_data_path)
+    def __set_dataset(cls, input_dir, split_name, batch_size):
+        encoded_data_path = input_dir / f'{split_name}.pth.tar'
+        if encoded_data_path.is_file():
+            dataset = torch.load(encoded_data_path)
+        else:
+            dataset = VecDataSet.from_df(input_dir / f'{split_name}.csv')
+        return DataLoader(dataset, shuffle=False, batch_size=batch_size, pin_memory=True)
 
-    def infer(self, data_path):
-        data_path = Path(data_path)
-        dataset = self.__set_dataset(data_path)
-        dataloader = DataLoader(dataset, shuffle=False, batch_size=self.batch_size)
-        preds, golds = self.__forward_batch_plus(dataloader, verbose=True)
-        return preds, golds
+    # def infer(self, data_path):
+    #     data_path = Path(data_path)
+    #     dataset = cls.__set_dataset(data_, 'test', batch_size)
+    #     dataloader = DataLoader(dataset, shuffle=False, batch_size=self.batch_size)
+    #     preds, golds = self.__forward_batch_plus(dataloader, verbose=True)
+    #     return preds, golds
 
     @staticmethod
     def get_optimizer(named_parameters, learning_rate, weight_decay, train_dataloader, n_epoch):
@@ -401,14 +397,15 @@ class Solver(object):
         # Prepare optimizer and schedule (linear warmup and decay)
         # no_decay = ['bias', 'LayerNorm.weight']
         optimizer = torch.optim.Adam(params=named_parameters, lr=learning_rate, weight_decay=weight_decay)
-
-        ## get a linear scheduler
-        # num_steps_epoch = len(train_dataloader)
-        # ReduceLROnPlateau(self.optimizer, 'min')
-        # num_train_optimization_steps = int(num_steps_epoch * n_epoch) + 1
-        # warmup_steps = 100
-        # scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=warmup_steps,
-        #                                             num_training_steps=num_train_optimization_steps)
+        '''
+        # get a linear scheduler
+        num_steps_epoch = len(train_dataloader)
+        ReduceLROnPlateau(self.optimizer, 'min')
+        num_train_optimization_steps = int(num_steps_epoch * n_epoch) + 1
+        warmup_steps = 100
+        scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=warmup_steps,
+                                                    num_training_steps=num_train_optimization_steps)
+        '''
         return optimizer, None
 
     @staticmethod
