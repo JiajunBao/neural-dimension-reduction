@@ -34,9 +34,9 @@ def nearest_neighbors(x, top_k):
             batch_topk_neighbors = indices[:, 1:1 + top_k]
             topk_neighbors_list.append(batch_topk_neighbors.cpu())
             ground_min_dist_square_list.append(batch_ground_min_dist_square.cpu())
-        ground_min_dist_square = torch.cat(ground_min_dist_square_list, dim=0)
-        topk_neighbors = torch.cat(topk_neighbors_list, dim=0)
-    return ground_min_dist_square.to(x), topk_neighbors.to(x)
+        ground_min_dist_square = torch.cat(ground_min_dist_square_list, dim=0).to(x)
+        topk_neighbors = torch.cat(topk_neighbors_list, dim=0).to(x)
+    return ground_min_dist_square, topk_neighbors
 
 
 def kl_div_add_mse_loss(p, q, lam):
