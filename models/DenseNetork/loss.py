@@ -66,6 +66,8 @@ def input_inverse_similarity(x, anchor_idx, min_dist_square, approximate_min_dis
             if the min_dist_square needs to be updated
     :return: q: qij in formula (P20-3) torch.tensor of the shape (n, m)
     """
+    print(anchor_idx.shape)
+    print(anchor_idx.device, anchor_idx.dtype)
     y = x[anchor_idx, :]  # (n, m, d)
     print(y.shape, x.shape)
     din = (x.unsqueeze(dim=1) - y).square().sum(dim=2)   # (n, m)
