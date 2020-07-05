@@ -10,19 +10,14 @@ STABLE_FACTOR = 1e-7
 def nearest_neighbors(x, top_k):
     """
     calculate the nearest neighbors of x, return the
-    :param x:
+    :param x: for matrix to calculate nearest neighbor
+    :param top_k: number of the nearest neighbor to be returned
     :return:
-            dist: torch.tensor (n, n) nearest neighbor rankings,
-                the distance between i and other points is sorted from low to high, the index is recorded.
-            In the below return values, the original first column contains the points themselves, we remove them.
-            sorted_dist: torch.tensor (n, n - 1) whole distance matrix;
-            indices: torch.tensor (n, n - 1);
+            ground_min_dist_square: torch.tensor (n, ) distance to the nearest neighbor
+            topk_neighbors: torch.tensor (n, top_k) the index of the top-k nearest neighbors;
     """
-    # dist = torch.cdist(x, x, 2)
-    # print(type(dist))
     dist = torch.cdist(x1=x, x2=x, p=2)  # (n, n)
     sorted_dist, indices = torch.sort(dist, dim=1, descending=False)
-    # sorted_dist, indices = sorted_dist[:, 1:], indices[:, 1:]
     ground_min_dist_square = sorted_dist[:, 1]  # the 0-th column is the distance to oneself
     topk_neighbors = indices[:, 1:1 + top_k]
     return ground_min_dist_square, topk_neighbors
