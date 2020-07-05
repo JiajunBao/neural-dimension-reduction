@@ -22,7 +22,7 @@ def nearest_neighbors(x, top_k):
         ground_min_dist_square = sorted_dist[:, 1]  # the 0-th column is the distance to oneself
         topk_neighbors = indices[:, 1:1 + top_k]
     else:  # calculate the nearest neighbors in batches
-        batch_size = 3000
+        batch_size = 2500
         num_iter = x.shape[0] // batch_size + 1
         topk_neighbors_list = list()
         ground_min_dist_square_list = list()
