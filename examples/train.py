@@ -11,7 +11,7 @@ def train():
                                  input_dir=Path('data'),
                                  output_dir=Path('checkpoints/switch-pq-1e-3'),
                                  learning_rate=1e-3,
-                                 n_epoch=60,
+                                 n_epoch=600,
                                  per_gpu_batch_size=90000,
                                  weight_decay=1e-5,
                                  seed=42)
