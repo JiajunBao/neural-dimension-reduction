@@ -18,10 +18,9 @@ def nearest_neighbors(x, top_k):
             sorted_dist: torch.tensor (n, n - 1) whole distance matrix;
             indices: torch.tensor (n, n - 1);
     """
-    y = x.numpy()
-    dist = torch.cdist(y, y, 2)
+    # dist = torch.cdist(x, x, 2)
     # print(type(dist))
-    # dist = torch.cdist(x1=x, x2=x, p=2)  # (n, n)
+    dist = torch.cdist(x1=x, x2=x, p=2)  # (n, n)
     sorted_dist, indices = torch.sort(dist, dim=1, descending=False)
     # sorted_dist, indices = sorted_dist[:, 1:], indices[:, 1:]
     ground_min_dist_square = sorted_dist[:, 1]  # the 0-th column is the distance to oneself
