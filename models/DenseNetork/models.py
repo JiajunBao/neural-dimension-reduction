@@ -18,6 +18,7 @@ from tqdm.auto import tqdm
 from models.DenseNetork.loss import kl_div_add_mse_loss, input_inverse_similarity, output_inverse_similarity, \
     nearest_neighbors
 
+TOP_K = 20
 
 class VecDataSet(Dataset):
     def __init__(self, x):
@@ -38,16 +39,15 @@ class VecDataSet(Dataset):
         return cls(x)
 
     @staticmethod
-    def precomputing(x):
+    def precomputing(x, top_k):
         """
         compute ground true nearest neighbors
         :param x:
         :return: anchor_idx: each point has m points as anchors (in the case, we pick m near neighbors of x as anchors)
                  q: input_similarity
         """
-        dist, sorted_dist, indices = nearest_neighbors(x)
-        ground_min_dist_square = sorted_dist[:, 0]  # the 0-th column is the distance to oneself
-        anchor_idx = indices
+        ground_min_dist_square, anchor_idx = nearest_neighbors(x, top_k)
+
         q = input_inverse_similarity(x,
                                      anchor_idx=anchor_idx,  # (n, n - 1)
                                      min_dist_square=ground_min_dist_square)
@@ -331,10 +331,10 @@ class Solver(object):
         p = output_inverse_similarity(y=output_embeddings, anchor_idx=anchor_idx)
         scores['loss'] = self.criterion(p, q, lam=1)
         # recalls
-        dist, sorted_dist, indices = nearest_neighbors(output_embeddings)
+        _, topk_neighbors = nearest_neighbors(x=output_embeddings, top_k=20)
         ground_nn = anchor_idx[:, 0].unsqueeze(dim=1)
         for r in [1, 5, 10, 20]:
-            top_predictions = indices[:, :r]  # (n, r)
+            top_predictions = topk_neighbors[:, :r]  # (n, r)
             scores[f'Recall@{r}'] = \
                 torch.sum(top_predictions == ground_nn, dtype=torch.float).item() / ground_nn.shape[0]
         return scores

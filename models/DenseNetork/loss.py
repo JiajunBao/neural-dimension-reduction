@@ -7,7 +7,7 @@ from models.DenseNetork import ANCHOR_SIZE
 STABLE_FACTOR = 1e-7
 
 
-def nearest_neighbors(x):
+def nearest_neighbors(x, top_k):
     """
     calculate the nearest neighbors of x, return the
     :param x:
@@ -23,7 +23,10 @@ def nearest_neighbors(x):
     print(type(dist))
     # dist = torch.cdist(x1=x, x2=x, p=2)  # (n, n)
     sorted_dist, indices = torch.sort(dist, dim=1, descending=False)
-    return dist, sorted_dist[:, 1:], indices[:, 1:]
+    # sorted_dist, indices = sorted_dist[:, 1:], indices[:, 1:]
+    ground_min_dist_square = sorted_dist[:, 1]  # the 0-th column is the distance to oneself
+    topk_neighbors = indices[:, 1:1 + top_k]
+    return ground_min_dist_square, topk_neighbors
 
 
 def kl_div_add_mse_loss(p, q, lam):
