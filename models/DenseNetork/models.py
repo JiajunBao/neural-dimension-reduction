@@ -25,7 +25,7 @@ class VecDataSet(Dataset):
         self.x = x
         # device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
         device = 'cpu'
-        a, q = self.precomputing(x.to(device))
+        a, q = self.precomputing(x.to(device), top_k=TOP_K)
         self.anchor_idx, self.q = a.cpu(), q.cpu()
 
     @classmethod
