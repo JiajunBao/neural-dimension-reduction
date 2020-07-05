@@ -18,14 +18,13 @@ from tqdm.auto import tqdm
 from models.DenseNetork.loss import kl_div_add_mse_loss, input_inverse_similarity, output_inverse_similarity, \
     nearest_neighbors
 
-TOP_K = 20
 
 class VecDataSet(Dataset):
     def __init__(self, x):
         self.x = x
         # device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
         device = 'cpu'
-        a, q = self.precomputing(x.to(device), top_k=TOP_K)
+        a, q = self.precomputing(x.to(device), top_k=10)
         self.anchor_idx, self.q = a.cpu(), q.cpu()
 
     @classmethod
