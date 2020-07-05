@@ -88,5 +88,4 @@ def output_inverse_similarity(y, anchor_idx):
     """
     anchors = y[anchor_idx, :]  # (n, m, d2)
     y = y.unsqueeze(dim=1)  # (n, 1, d2)
-    print(y.shape, anchor_idx.shape, anchors.shape)
     return 1 / (1 + torch.sum((y - anchors).square(), dim=2))
