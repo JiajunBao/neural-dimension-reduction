@@ -8,7 +8,7 @@ class Global:
     debug = False
     num_of_plots = 0
     DISABLE_TSNE = True # True for omittibg tSNE
-    IN_SAMPLE_TESTING = False # default is False
+    IN_SAMPLE_TESTING = True # default is False
     eps = .1
     fig_names = {}
 
