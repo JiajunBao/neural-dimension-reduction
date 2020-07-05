@@ -9,3 +9,5 @@ python examples/train.py \
 --num_eval_per_epoch 2 \
 --weight_decay 1e-5
 
+# rm data/train.pth.tar
+# rm data/dev.pth.tar
