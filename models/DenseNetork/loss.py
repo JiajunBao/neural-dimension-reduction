@@ -1,5 +1,5 @@
 import torch
-from scipy.spatial.distance import cdist
+from scipy.spatial import distance_matrix
 import numpy
 
 from models.DenseNetork import ANCHOR_SIZE
@@ -19,7 +19,7 @@ def nearest_neighbors(x):
             indices: torch.tensor (n, n - 1);
     """
     y = x.numpy()
-    dist = cdist(y, y, 'euclidean')
+    dist = distance_matrix(y, y)
     print(type(dist))
     # dist = torch.cdist(x1=x, x2=x, p=2)  # (n, n)
     sorted_dist, indices = torch.sort(dist, dim=1, descending=False)
