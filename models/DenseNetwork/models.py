@@ -282,7 +282,6 @@ class Solver(object):
                                  "optimizer": self.optimizer.state_dict(),
                                  "metrics_scores": metrics_scores,
                                  "output_embeddings": outputs}
-                #  TODO: here we use training loss as metrics; switch to dev loss in the future
                 logx.save_model(save_dict,
                                 metric=metrics_scores['Recall@1'],
                                 epoch=global_step,
