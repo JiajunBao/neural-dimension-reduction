@@ -22,8 +22,8 @@ from models.DenseNetork.loss import kl_div_add_mse_loss, input_inverse_similarit
 class VecDataSet(Dataset):
     def __init__(self, x):
         self.x = x
-        # device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-        device = 'cpu'
+        device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+        # device = 'cpu'
         a, q = self.precomputing(x.to(device), top_k=10)
         self.anchor_idx, self.q = a.cpu(), q.cpu()
 
@@ -49,7 +49,7 @@ class VecDataSet(Dataset):
 
         q = input_inverse_similarity(x,
                                      anchor_idx=anchor_idx,  # (n, n - 1)
-                                     min_dist_square=ground_min_dist_square)
+                                     min_dist_square=ground_min_dist_square.to(x))
         return anchor_idx, q
 
     def __len__(self):
