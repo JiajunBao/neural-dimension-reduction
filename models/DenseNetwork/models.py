@@ -449,7 +449,7 @@ class Solver(object):
                             help='the random seed of the whole process')
         parser.add_argument('--top_k', type=int, default=20,
                             help='the top-k nearest neighbors that are considered.')
-        parser.add_argument_group('--hidden_dims_list', type=list,
+        parser.add_argument('--hidden_dims_list', type=list,
                                   help='list of hidden dimensions')
         args = parser.parse_args()
 
