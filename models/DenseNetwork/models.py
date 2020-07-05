@@ -18,7 +18,7 @@ from tqdm.auto import tqdm
 from models.DenseNetwork.loss import kl_div_add_mse_loss, input_inverse_similarity, output_inverse_similarity, \
     nearest_neighbors
 
-TOP_K = 10
+TOP_K = 100
 
 
 class VecDataSet(Dataset):
