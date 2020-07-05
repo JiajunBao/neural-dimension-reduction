@@ -33,8 +33,8 @@ def nearest_neighbors(x, top_k):
             batch_ground_min_dist_square = sorted_dist[:, 1]  # the 0-th column is the distance to oneself
             batch_topk_neighbors = indices[:, 1:1 + top_k]
             print(batch_ground_min_dist_square.shape, batch_topk_neighbors.shape)
-            topk_neighbors_list.append(batch_topk_neighbors)
-            ground_min_dist_square_list.append(batch_ground_min_dist_square)
+            topk_neighbors_list.append(batch_topk_neighbors.cpu())
+            ground_min_dist_square_list.append(batch_ground_min_dist_square.cpu())
         ground_min_dist_square = torch.cat(ground_min_dist_square_list, dim=0)
         topk_neighbors = torch.cat(topk_neighbors_list, dim=0)
         print(ground_min_dist_square.shape, topk_neighbors.shape)
