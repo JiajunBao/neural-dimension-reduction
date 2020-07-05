@@ -9,7 +9,7 @@ def train():
     model = Net.from_scratch(dim_in, hidden_dims_list, dim_out)
     solver = Solver.from_scratch(model,
                                  input_dir=Path('data'),
-                                 output_dir=Path('checkpoints/run1'),
+                                 output_dir=Path('checkpoints/no-reg'),
                                  learning_rate=1e-2,
                                  n_epoch=60,
                                  per_gpu_batch_size=90000,
