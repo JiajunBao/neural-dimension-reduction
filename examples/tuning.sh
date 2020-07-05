@@ -2,7 +2,7 @@
 
 python examples/train.py \
 --input_dir data \
---output_dir checkpoints/200-100-50-25-20/1e-3 \
+--output_dir checkpoints/200-100-50-25-20/top100/1e-3 \
 --learning_rate 1e-3 \
 --n_epoch 600 \
 --per_gpu_batch_size 90000 \
