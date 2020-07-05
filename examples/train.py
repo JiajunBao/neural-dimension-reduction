@@ -3,11 +3,11 @@ from pathlib import Path
 
 
 def train():
-    dim_in = 200
-    hidden_dims_list = [200, 100, 50, 25, 20]
-    dim_out = 20
-    model = Net.from_scratch(dim_in, hidden_dims_list, dim_out)
     args = Solver.get_solver_arguments()
+    dim_in = 200
+    dim_out = 20
+    hidden_dims_list = args.hidden_dims_list
+    model = Net.from_scratch(dim_in, hidden_dims_list, dim_out)
     solver = Solver.from_scratch(model,
                                  input_dir=args.input_dir,
                                  output_dir=args.output_dir,

@@ -10,7 +10,8 @@ python examples/train.py \
 --per_gpu_batch_size 90000 \
 --num_eval_per_epoch 2 \
 --weight_decay 1e-5 \
---top_k 20
+--top_k 20 \
+--hidden_dims_list [200, 100, 50, 25, 20]
 
 # rm data/train.pth.tar
 # rm data/dev.pth.tar
