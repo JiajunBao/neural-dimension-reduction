@@ -8,8 +8,8 @@ def train():
     dim_out = 20
     model = Net.from_scratch(dim_in, hidden_dims_list, dim_out)
     solver = Solver.from_scratch(model,
-                                 input_dir=Path('data'),
-                                 output_dir=Path('checkpoints/run1'),
+                                 input_dir=Path('sample'),
+                                 output_dir=Path('checkpoints/sample'),
                                  learning_rate=1e-2,
                                  n_epoch=2,
                                  per_gpu_batch_size=200,
