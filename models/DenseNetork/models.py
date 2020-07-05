@@ -24,8 +24,9 @@ class VecDataSet(Dataset):
         self.x = x
         device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
         # device = 'cpu'
-        a, q, ground_min_dist_square = self.precomputing(x.to(device), top_k=10)
+        a, q, ground_min_dist_square, topk_dists = self.precomputing(x.to(device), top_k=10)
         self.anchor_idx, self.q, self.ground_min_dist_square = a.cpu(), q.cpu(), ground_min_dist_square.cpu()
+        self.topk_dists = topk_dists.cpu()
 
     @classmethod
     def from_df(cls, path_to_dataframe):
@@ -45,12 +46,12 @@ class VecDataSet(Dataset):
         :return: anchor_idx: each point has m points as anchors (in the case, we pick m near neighbors of x as anchors)
                  q: input_similarity
         """
-        ground_min_dist_square, anchor_idx = nearest_neighbors(x, top_k)
+        ground_min_dist_square, anchor_idx, topk_dists = nearest_neighbors(x, top_k)
 
         q = input_inverse_similarity(x,
                                      anchor_idx=anchor_idx,  # (n, n - 1)
                                      min_dist_square=ground_min_dist_square.to(x))
-        return anchor_idx, q, ground_min_dist_square
+        return anchor_idx, q, ground_min_dist_square, topk_dists
 
     def __len__(self):
         return self.x.shape[0]
@@ -330,7 +331,7 @@ class Solver(object):
         p = output_inverse_similarity(y=output_embeddings, anchor_idx=anchor_idx)
         scores['loss'] = self.criterion(p, q, lam=1)
         # recalls
-        _, topk_neighbors = nearest_neighbors(x=output_embeddings, top_k=20)
+        _, topk_neighbors, _ = nearest_neighbors(x=output_embeddings, top_k=20)
         ground_nn = anchor_idx[:, 0].unsqueeze(dim=1)
         for r in [1, 5, 10, 20]:
             top_predictions = topk_neighbors[:, :r]  # (n, r)
