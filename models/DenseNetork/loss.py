@@ -36,7 +36,7 @@ def nearest_neighbors(x, top_k):
             ground_min_dist_square_list.append(batch_ground_min_dist_square)
         ground_min_dist_square = torch.cat(ground_min_dist_square_list, dim=0)
         topk_neighbors = torch.cat(topk_neighbors_list, dim=0)
-        print(ground_min_dist_square.shape, top_k.shape)
+        print(ground_min_dist_square.shape, topk_neighbors.shape)
     return ground_min_dist_square, topk_neighbors
 
 
