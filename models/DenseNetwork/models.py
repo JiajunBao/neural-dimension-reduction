@@ -15,8 +15,10 @@ from runx.logx import logx
 from torch.utils.data import DataLoader
 from tqdm.auto import tqdm
 
-from models.DenseNetork.loss import kl_div_add_mse_loss, input_inverse_similarity, output_inverse_similarity, \
+from models.DenseNetwork.loss import kl_div_add_mse_loss, input_inverse_similarity, output_inverse_similarity, \
     nearest_neighbors
+
+TOP_K = 10
 
 
 class VecDataSet(Dataset):
@@ -24,7 +26,7 @@ class VecDataSet(Dataset):
         self.x = x
         device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
         # device = 'cpu'
-        a, q, ground_min_dist_square, topk_dists = self.precomputing(x.to(device), top_k=10)
+        a, q, ground_min_dist_square, topk_dists = self.precomputing(x.to(device), top_k=TOP_K)
         self.anchor_idx, self.q, self.ground_min_dist_square = a.cpu(), q.cpu(), ground_min_dist_square.cpu()
         self.topk_dists = topk_dists.cpu()
 
@@ -331,7 +333,7 @@ class Solver(object):
         p = output_inverse_similarity(y=output_embeddings, anchor_idx=anchor_idx)
         scores['loss'] = self.criterion(p, q, lam=1)
         # recalls
-        _, topk_neighbors, _ = nearest_neighbors(x=output_embeddings, top_k=20)
+        _, topk_neighbors, _ = nearest_neighbors(x=output_embeddings, top_k=TOP_K)
         ground_nn = anchor_idx[:, 0].unsqueeze(dim=1)
         for r in [1, 5, 10, 20]:
             top_predictions = topk_neighbors[:, :r]  # (n, r)

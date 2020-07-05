@@ -2,7 +2,7 @@ import torch
 from scipy.spatial import distance_matrix
 import numpy
 from tqdm.auto import tqdm
-from models.DenseNetork import ANCHOR_SIZE
+from models.DenseNetwork import ANCHOR_SIZE
 
 STABLE_FACTOR = 1e-7
 
@@ -71,10 +71,9 @@ def input_inverse_similarity(x, anchor_idx, min_dist_square, approximate_min_dis
     :return: q: qij in formula (P20-3) torch.tensor of the shape (n, m)
     """
     y = x[anchor_idx, :]  # (n, m, d)
-    print(y.shape, x.shape)
     din = (x.unsqueeze(dim=1) - y).square().sum(dim=2)   # (n, m)
-    dmin_x = min_dist_square.unsqueeze(dim=1)  # (n, 1)
-    dmin_y = min_dist_square[anchor_idx]  # (n, m)
+    dmin_x = min_dist_square.unsqueeze(dim=1) ** 2  # (n, 1)
+    dmin_y = min_dist_square[anchor_idx] ** 2  # (n, m)
     if approximate_min_dist:
         raise NotImplementedError("min_dist_square should give ground-true values")
     sigma_xy = 1 / (din / dmin_x + STABLE_FACTOR)

@@ -1,4 +1,4 @@
-from models.DenseNetork.models import Net, Solver
+from models.DenseNetwork.models import Net, Solver
 from pathlib import Path
 
 
