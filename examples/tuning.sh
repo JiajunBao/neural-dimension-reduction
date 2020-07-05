@@ -9,7 +9,8 @@ python examples/train.py \
 --n_epoch 600 \
 --per_gpu_batch_size 90000 \
 --num_eval_per_epoch 2 \
---weight_decay 1e-5
+--weight_decay 1e-5 \
+--top_k 20
 
 # rm data/train.pth.tar
 # rm data/dev.pth.tar

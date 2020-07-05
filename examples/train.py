@@ -15,7 +15,8 @@ def train():
                                  n_epoch=args.n_epoch,
                                  per_gpu_batch_size=args.per_gpu_batch_size,
                                  weight_decay=args.weight_decay,
-                                 seed=args.seed)
+                                 seed=args.seed,
+                                 top_k=args.top_k)
     solver.fit(num_eval_per_epoch=args.num_eval_per_epoch)
 
 

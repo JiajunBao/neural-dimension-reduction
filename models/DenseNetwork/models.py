@@ -18,33 +18,34 @@ from tqdm.auto import tqdm
 from models.DenseNetwork.loss import kl_div_add_mse_loss, input_inverse_similarity, output_inverse_similarity, \
     nearest_neighbors
 
-TOP_K = 20
+# TOP_K = 20
 
 
 class VecDataSet(Dataset):
-    def __init__(self, x):
+    def __init__(self, x, top_k):
         self.x = x
         device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
         # device = 'cpu'
-        a, q, ground_min_dist_square, topk_dists = self.precomputing(x.to(device), top_k=TOP_K)
+        a, q, ground_min_dist_square, topk_dists = self.precomputing(x.to(device), top_k=top_k)
         self.anchor_idx, self.q, self.ground_min_dist_square = a.cpu(), q.cpu(), ground_min_dist_square.cpu()
         self.topk_dists = topk_dists.cpu()
+        self.top_k = top_k
 
     @classmethod
-    def from_df(cls, path_to_dataframe):
+    def from_df(cls, path_to_dataframe, top_k):
         x = torch.from_numpy(pd.read_csv(path_to_dataframe).to_numpy()).to(torch.float32)
-        return cls(x)
+        return cls(x, top_k)
 
     @classmethod
-    def from_tensor(cls, path_to_tensor):
-        x = torch.load(path_to_tensor)
-        return cls(x)
+    def from_dataset(cls, path_to_tensor):
+        return torch.load(path_to_tensor)
 
     @staticmethod
     def precomputing(x, top_k):
         """
         compute ground true nearest neighbors
         :param x:
+        :param top_k: top-k neighbors that are considered
         :return: anchor_idx: each point has m points as anchors (in the case, we pick m near neighbors of x as anchors)
                  q: input_similarity
         """
@@ -107,7 +108,7 @@ class Net(nn.Module):
 class Solver(object):
 
     def __init__(self, input_dir, output_dir, model, device, per_gpu_batch_size, n_gpu, batch_size, learning_rate,
-                 weight_decay, n_epoch, seed, **kwargs):
+                 weight_decay, n_epoch, seed, top_k, **kwargs):
         # construct param dict
         self.construct_param_dict = OrderedDict({
             "input_dir": str(input_dir),
@@ -117,6 +118,7 @@ class Solver(object):
             "per_gpu_batch_size": per_gpu_batch_size,
             "weight_decay": weight_decay,
             "seed": seed,
+            "top_k": top_k,
         })
 
         # build log
@@ -130,7 +132,7 @@ class Solver(object):
         # arguments
         self.input_dir = input_dir
         self.output_dir = output_dir
-
+        self.top_k = top_k
         # training utilities
         self.model = model
 
@@ -160,7 +162,7 @@ class Solver(object):
 
     @classmethod
     def from_scratch(cls, model, input_dir, output_dir, learning_rate, n_epoch,
-                     per_gpu_batch_size, weight_decay, seed):
+                     per_gpu_batch_size, weight_decay, seed, top_k):
         # check the validity of the directory
         if os.path.exists(output_dir) and os.listdir(output_dir):
             raise ValueError(f"Output directory ({output_dir}) already exists "
@@ -172,15 +174,15 @@ class Solver(object):
         batch_size = per_gpu_batch_size * max(1, n_gpu)
 
         # dataloader
-        train_dataloader = cls.get_train_dataloader(input_dir, batch_size)
-        dev_dataloader = cls.get_dev_dataloader(input_dir, batch_size)
+        train_dataloader = cls.get_train_dataloader(input_dir, batch_size, top_k)
+        dev_dataloader = cls.get_dev_dataloader(input_dir, batch_size, top_k)
 
         return cls(input_dir, output_dir, model, device, per_gpu_batch_size, n_gpu, batch_size, learning_rate,
-                   weight_decay, n_epoch, seed, train_dataloader=train_dataloader, dev_dataloader=dev_dataloader)
+                   weight_decay, n_epoch, seed, top_k, train_dataloader=train_dataloader, dev_dataloader=dev_dataloader)
 
     @classmethod
     def from_pretrained(cls, model_constructor, pretrained_system_name_or_path, resume_training=False,
-                        input_dir=None, output_dir=None, **kwargs):
+                        input_dir=None, output_dir=None, top_k=None, **kwargs):
         # load checkpoints
         checkpoint = torch.load(pretrained_system_name_or_path)
         meta = {k: v for k, v in checkpoint.items() if k != 'state_dict'}
@@ -198,13 +200,13 @@ class Solver(object):
         solver_args["batch_size"] = kwargs.pop("batch_size", old_batch_size)
         # load dataset
         if resume_training:
-            if input_dir is None or output_dir is None:
+            if input_dir is None or output_dir is None or top_k is None:
                 raise AssertionError("Either input_dir and output_dir (for resuming) is None!")
             solver_args["input_dir"] = input_dir
             solver_args["output_dir"] = output_dir
-            solver_args["train_dataloader"] = cls.get_train_dataloader(input_dir, solver_args["batch_size"])
-            solver_args["dev_dataloader"] = cls.get_dev_dataloader(input_dir, solver_args["batch_size"])
-
+            solver_args["train_dataloader"] = cls.get_train_dataloader(input_dir, solver_args["batch_size"], top_k)
+            solver_args["dev_dataloader"] = cls.get_dev_dataloader(input_dir, solver_args["batch_size"], top_k)
+            solver_args["top_k"] = top_k
         return cls(**solver_args)
 
     def fit(self, num_eval_per_epoch=5):
@@ -333,7 +335,7 @@ class Solver(object):
         p = output_inverse_similarity(y=output_embeddings, anchor_idx=anchor_idx)
         scores['loss'] = self.criterion(p, q, lam=1)
         # recalls
-        _, topk_neighbors, _ = nearest_neighbors(x=output_embeddings, top_k=TOP_K)
+        _, topk_neighbors, _ = nearest_neighbors(x=output_embeddings, top_k=self.top_k)
         ground_nn = anchor_idx[:, 0].unsqueeze(dim=1)
         for r in [1, 5, 10, 20]:
             top_predictions = topk_neighbors[:, :r]  # (n, r)
@@ -360,25 +362,25 @@ class Solver(object):
         return reduced_embeddings
 
     @classmethod
-    def get_train_dataloader(cls, input_dir, batch_size):
-        return cls.__set_dataset(input_dir, 'train', batch_size)
+    def get_train_dataloader(cls, input_dir, batch_size, top_k):
+        return cls.__set_dataset(input_dir, 'train', batch_size, top_k)
 
     @classmethod
-    def get_dev_dataloader(cls, input_dir, batch_size):
-        return cls.__set_dataset(input_dir, 'dev', batch_size)
+    def get_dev_dataloader(cls, input_dir, batch_size, top_k):
+        return cls.__set_dataset(input_dir, 'dev', batch_size, top_k)
 
     @classmethod
-    def get_test_dataloader(cls, input_dir, batch_size):
-        return cls.__set_dataset(input_dir, 'test', batch_size)
+    def get_test_dataloader(cls, input_dir, batch_size, top_k):
+        return cls.__set_dataset(input_dir, 'test', batch_size, top_k)
 
     @classmethod
-    def __set_dataset(cls, input_dir, split_name, batch_size):
+    def __set_dataset(cls, input_dir, split_name, batch_size, top_k):
         encoded_data_path = input_dir / f'{split_name}.pth.tar'
         if encoded_data_path.is_file():
             dataset = torch.load(encoded_data_path)
             print(f'load dataset from {encoded_data_path}')
         else:
-            dataset = VecDataSet.from_df(input_dir / f'{split_name}.csv')
+            dataset = VecDataSet.from_df(input_dir / f'{split_name}.csv', top_k)
             print(f'construct dataset from dataframe')
             torch.save(dataset, encoded_data_path)
             print(f'save dataset at {encoded_data_path}')
@@ -445,6 +447,8 @@ class Solver(object):
                             help='weight_decay for the optimizer (l2 regularization)')
         parser.add_argument('--seed', type=int, default=42,
                             help='the random seed of the whole process')
+        parser.add_argument('--top_k', type=int, default=20,
+                            help='the top-k nearest neighbors that are considered.')
         args = parser.parse_args()
 
         return args
