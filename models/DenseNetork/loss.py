@@ -27,7 +27,7 @@ def nearest_neighbors(x, top_k):
         topk_neighbors_list = list()
         ground_min_dist_square_list = list()
         for i in tqdm(torch.arange(num_iter), desc='computing nearest neighbors in batches'):
-            batch_x = x[i * num_iter: (i + 1) * num_iter, :]
+            batch_x = x[i * batch_size: (i + 1) * batch_size, :]
             dist = torch.cdist(x1=batch_x, x2=x, p=2)  # (n, n)
             sorted_dist, indices = torch.sort(dist, dim=1, descending=False)
             batch_ground_min_dist_square = sorted_dist[:, 1]  # the 0-th column is the distance to oneself
