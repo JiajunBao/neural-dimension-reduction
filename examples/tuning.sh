@@ -1,4 +1,6 @@
 
+rm data/train.pth.tar
+rm data/dev.pth.tar
 
 python examples/train.py \
 --input_dir data \
