@@ -1,5 +1,6 @@
 import torch
 from scipy.spatial.distance import cdist
+import numpy
 STABLE_FACTOR = 1e-7
 
 
@@ -15,7 +16,7 @@ def nearest_neighbors(x):
             indices: torch.tensor (n, n - 1);
     """
     y = x.numpy()
-    dist = torch.tensor(cdist(y, y, 'euclidean'))
+    dist = numpy.array(cdist(y, y, 'euclidean'))
     # dist = torch.cdist(x1=x, x2=x, p=2)  # (n, n)
     sorted_dist, indices = torch.sort(dist, dim=1, descending=False)
     return dist, sorted_dist[:, 1:], indices[:, 1:]
