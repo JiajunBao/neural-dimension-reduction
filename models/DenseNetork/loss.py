@@ -19,8 +19,8 @@ def nearest_neighbors(x, top_k):
             indices: torch.tensor (n, n - 1);
     """
     y = x.numpy()
-    dist = distance_matrix(y, y)
-    print(type(dist))
+    dist = torch.cdist(y, y, 2)
+    # print(type(dist))
     # dist = torch.cdist(x1=x, x2=x, p=2)  # (n, n)
     sorted_dist, indices = torch.sort(dist, dim=1, descending=False)
     # sorted_dist, indices = sorted_dist[:, 1:], indices[:, 1:]
