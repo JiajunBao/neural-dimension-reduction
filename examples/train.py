@@ -12,7 +12,7 @@ def train():
                                  output_dir=Path('checkpoints/run1'),
                                  learning_rate=1e-2,
                                  n_epoch=2,
-                                 per_gpu_batch_size=200,
+                                 per_gpu_batch_size=90000,
                                  weight_decay=1e-5,
                                  seed=42)
     solver.fit(num_eval_per_epoch=2)
