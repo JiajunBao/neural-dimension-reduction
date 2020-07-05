@@ -280,9 +280,9 @@ class Solver(object):
                                  "optimizer": self.optimizer.state_dict()}
                 #  TODO: here we use training loss as metrics; switch to dev loss in the future
                 logx.save_model(save_dict,
-                                metric=loss.item(),
+                                metric=metrics_scores['Recall@1'],
                                 epoch=global_step,
-                                higher_better=False)
+                                higher_better=True)
                 # pbar.update(1)
 
     def batch_to_device(self, batch):
@@ -333,7 +333,7 @@ class Solver(object):
         scores = dict()
         # calculate loss
         p = output_inverse_similarity(y=output_embeddings, anchor_idx=anchor_idx)
-        scores['loss'] = self.criterion(p, q, lam=1)
+        scores['loss'] = self.criterion(p, q, lam=1).item()
         # recalls
         _, topk_neighbors, _ = nearest_neighbors(x=output_embeddings, top_k=self.top_k)
         ground_nn = anchor_idx[:, 0].unsqueeze(dim=1)
