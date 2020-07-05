@@ -272,12 +272,16 @@ class Solver(object):
                     save_dict = {"model_construct_dict": self.model.model_construct_dict,
                                  "model_state_dict": self.model.module.state_dict(),
                                  "solver_construct_params_dict": self.construct_param_dict,
-                                 "optimizer": self.optimizer.state_dict()}
+                                 "optimizer": self.optimizer.state_dict(),
+                                 "metrics_scores": metrics_scores,
+                                 "output_embeddings": outputs}
                 else:
                     save_dict = {"model_construct_dict": self.model.model_construct_dict,
                                  "model_state_dict": self.model.state_dict(),
                                  "solver_construct_params_dict": self.construct_param_dict,
-                                 "optimizer": self.optimizer.state_dict()}
+                                 "optimizer": self.optimizer.state_dict(),
+                                 "metrics_scores": metrics_scores,
+                                 "output_embeddings": outputs}
                 #  TODO: here we use training loss as metrics; switch to dev loss in the future
                 logx.save_model(save_dict,
                                 metric=metrics_scores['Recall@1'],
