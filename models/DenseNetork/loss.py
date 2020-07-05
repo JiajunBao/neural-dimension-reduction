@@ -21,7 +21,6 @@ def nearest_neighbors(x, top_k):
         sorted_dist, indices = torch.sort(dist, dim=1, descending=False)
         ground_min_dist_square = sorted_dist[:, 1]  # the 0-th column is the distance to oneself
         topk_neighbors = indices[:, 1:1 + top_k]
-        return ground_min_dist_square, topk_neighbors
     else:  # calculate the nearest neighbors in batches
         batch_size = 15000
         num_iter = x.shape[0] // batch_size + 1
@@ -35,7 +34,10 @@ def nearest_neighbors(x, top_k):
             batch_topk_neighbors = indices[:, 1:1 + top_k]
             topk_neighbors_list.append(batch_topk_neighbors)
             ground_min_dist_square_list.append(batch_ground_min_dist_square)
-        return torch.cat(ground_min_dist_square_list, dim=0), torch.cat(topk_neighbors_list, dim=0)
+        ground_min_dist_square = torch.cat(ground_min_dist_square_list, dim=0)
+        topk_neighbors = torch.cat(topk_neighbors_list, dim=0)
+        print(ground_min_dist_square.shape, top_k.shape)
+    return ground_min_dist_square, topk_neighbors
 
 
 def kl_div_add_mse_loss(p, q, lam):
