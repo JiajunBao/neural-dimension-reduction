@@ -22,22 +22,22 @@ def nearest_neighbors(x, top_k):
         ground_min_dist_square = sorted_dist[:, 1]  # the 0-th column is the distance to oneself
         topk_neighbors = indices[:, 1:1 + top_k]
     else:  # calculate the nearest neighbors in batches
-        batch_size = 15000
-        num_iter = x.shape[0] // batch_size + 1
+        device = x.device
+        x_cpu = x.cpu()
+        batch_size = 3000
+        num_iter = x_cpu.shape[0] // batch_size + 1
         topk_neighbors_list = list()
         ground_min_dist_square_list = list()
         for i in tqdm(torch.arange(num_iter), desc='computing nearest neighbors in batches'):
-            batch_x = x[i * batch_size: (i + 1) * batch_size, :]
-            dist = torch.cdist(x1=batch_x, x2=x, p=2)  # (n, n)
+            batch_x = x_cpu[i * batch_size: (i + 1) * batch_size, :].to(device)
+            dist = torch.cdist(x1=batch_x, x2=x_cpu, p=2)  # (n, n)
             sorted_dist, indices = torch.sort(dist, dim=1, descending=False)
             batch_ground_min_dist_square = sorted_dist[:, 1]  # the 0-th column is the distance to oneself
             batch_topk_neighbors = indices[:, 1:1 + top_k]
-            print(batch_ground_min_dist_square.shape, batch_topk_neighbors.shape)
             topk_neighbors_list.append(batch_topk_neighbors.cpu())
             ground_min_dist_square_list.append(batch_ground_min_dist_square.cpu())
-        ground_min_dist_square = torch.cat(ground_min_dist_square_list, dim=0)
-        topk_neighbors = torch.cat(topk_neighbors_list, dim=0)
-        print(ground_min_dist_square.shape, topk_neighbors.shape)
+        ground_min_dist_square = torch.cat(ground_min_dist_square_list, dim=0).to(device)
+        topk_neighbors = torch.cat(topk_neighbors_list, dim=0).to(device)
     return ground_min_dist_square, topk_neighbors
 
 
