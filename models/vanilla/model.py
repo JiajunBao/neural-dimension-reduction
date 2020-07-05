@@ -112,7 +112,7 @@ class Reducer(Global):
     def find_nearest_neighbors(self, data_df):
         self.out('\nComputing neighbors.')
         data_np = data_df.to_numpy()
-        print('data_np shap', data_np.shape)
+        print('data_np shape', data_np.shape)
         dist = distance_matrix(data_np, data_np)
         nearest_neighbor_matrix = np.argpartition(dist, 21, axis=1)[:,:21] # d(x,x)=0, so this needs to be ommitted
         nearest_neighbors = {i:SortDB() for i in range(data_df.shape[0])}
