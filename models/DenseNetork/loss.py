@@ -47,7 +47,7 @@ def kl_div_add_mse_loss(p, q, lam):
     :param lam: the constant that balances the influence of two losses
     :return: torch.tensor of the shape (,)
     """
-    return torch.sum(p * torch.log(p / q))
+    return torch.sum(p * torch.log(p / q)) + lam * torch.sum((p - q) ** 2)
 
 
 def input_inverse_similarity(x, anchor_idx, min_dist_square, approximate_min_dist=False):
