@@ -40,7 +40,7 @@ def nearest_neighbors(x, top_k):
         ground_min_dist_square = torch.cat(ground_min_dist_square_list, dim=0)
         topk_neighbors = torch.cat(topk_neighbors_list, dim=0)
         topk_dists = torch.cat(sorted_dist_list, dim=0)
-    return ground_min_dist_square, topk_neighbors, topk_dists
+    return ground_min_dist_square.cpu(), topk_neighbors.cpu(), topk_dists.cpu()
 
 
 def kl_div_add_mse_loss(p, q, lam):

@@ -241,9 +241,9 @@ class Solver(object):
 
     def validate(self, dataloader):
         outputs = self.__forward_batch_plus(dataloader)
-        metrics_scores, p = self.get_scores(q=dataloader.dataset.q.to(self.device),
+        metrics_scores, p = self.get_scores(q=dataloader.dataset.q,
                                             output_embeddings=outputs,
-                                            anchor_idx=dataloader.dataset.anchor_idx.to(self.device))
+                                            anchor_idx=dataloader.dataset.anchor_idx)
         return outputs, metrics_scores, p
 
     def __train_per_epoch(self, epoch_idx, steps_per_eval):
@@ -251,14 +251,7 @@ class Solver(object):
         for batch_idx, batch in enumerate(self.train_dataloader):
             # assume that the whole input matrix fits the GPU memory
             global_step = epoch_idx * len(self.train_dataloader) + batch_idx
-            loss, training_set_outputs, training_set_p = self.__training_step(batch)
-            if self.n_gpu > 1:
-                loss = loss.mean()  # mean() to average on multi-gpu.
-            loss.backward()
-            # pbar.set_postfix_str(f"tr_loss: {loss.item():.5f}")
-            # update weights
-            self.optimizer.step()
-            # self.scheduler.step()  # Update learning rate schedule
+            training_set_loss, training_set_outputs, training_set_p = self.__training_step(batch)
             if batch_idx + 1 == len(self.train_dataloader):
                 # validate and save checkpoints
                 developing_set_outputs, developing_set_metrics_scores, developing_set_p = \
@@ -269,7 +262,7 @@ class Solver(object):
                     self.get_scores(q=self.train_dataloader.dataset.q.to(self.device),
                                     output_embeddings=training_set_outputs,
                                     anchor_idx=self.train_dataloader.dataset.anchor_idx.to(self.device))
-                training_set_metrics_scores['train_loss'] = loss.item()
+                training_set_metrics_scores['train_loss'] = training_set_loss.item()
                 if self.scheduler:
                     training_set_metrics_scores['learning_rate'] = self.scheduler.get_last_lr()[0]
                 logx.metric('train', training_set_metrics_scores, global_step)
@@ -319,9 +312,20 @@ class Solver(object):
         self.model.zero_grad()  # reset gradient
         self.model.train()
         outputs = self.__forwarding_step(batch)
-        p = output_inverse_similarity(y=outputs, anchor_idx=self.train_dataloader.dataset.anchor_idx.to(self.device))
-        loss = self.criterion(p, self.train_dataloader.dataset.q.to(self.device), lam=1)
-        return loss, outputs, p
+        p = output_inverse_similarity(y=outputs.to(self.device),
+                                      anchor_idx=self.train_dataloader.dataset.anchor_idx.to(self.device)).cpu()
+        loss = self.criterion(p.to(self.device),
+                              self.train_dataloader.dataset.q.to(self.device), lam=1)
+
+        if self.n_gpu > 1:
+            loss = loss.mean()  # mean() to average on multi-gpu.
+        loss.backward()
+        # pbar.set_postfix_str(f"tr_loss: {loss.item():.5f}")
+        # update weights
+        self.optimizer.step()
+        # self.scheduler.step()  # Update learning rate schedule
+
+        return loss.cpu().detach(), outputs.cpu().detach(), p.cpu().detach()
 
     def __forwarding_step(self, batch):
         """
@@ -341,7 +345,7 @@ class Solver(object):
         """
         batch_inputs = self.batch_to_device(batch)
         outputs = self.model(batch_inputs)
-        return outputs
+        return outputs.cpu()
 
     def get_scores(self, q, output_embeddings, anchor_idx):
         """
@@ -353,8 +357,9 @@ class Solver(object):
         """
         scores = dict()
         # calculate loss
-        p = output_inverse_similarity(y=output_embeddings, anchor_idx=anchor_idx)
-        scores['loss'] = self.criterion(p, q, lam=1).item()
+        p = output_inverse_similarity(y=output_embeddings.to(self.device),
+                                      anchor_idx=anchor_idx.to(self.device)).cpu()
+        scores['loss'] = self.criterion(p.to(self.device), q.to(self.device), lam=1).cpu().detach().item()
         # recalls
         _, topk_neighbors, _ = nearest_neighbors(x=output_embeddings, top_k=self.top_k)
         ground_nn = anchor_idx[:, 0].unsqueeze(dim=1)
