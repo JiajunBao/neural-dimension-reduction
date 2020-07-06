@@ -7,16 +7,18 @@ from models.DenseNetwork import ANCHOR_SIZE
 STABLE_FACTOR = 1e-7
 
 
-def nearest_neighbors(x, top_k):
+def nearest_neighbors(x, top_k, device):
     """
     calculate the nearest neighbors of x, return the
     :param x: for matrix to calculate nearest neighbor
     :param top_k: number of the nearest neighbor to be returned
+    :param device: device used during computation
     :return:
             ground_min_dist_square: torch.tensor (n, ) distance to the nearest neighbor
             topk_neighbors: torch.tensor (n, top_k) the index of the top-k nearest neighbors;
     """
     batch_size = 2000
+    x = x.to(device)
     if x.shape[0] * x.shape[1] < batch_size * 200:  # direct computes the whole matrix
         dist = torch.cdist(x1=x, x2=x, p=2)  # (n, n)
         sorted_dist, indices = torch.sort(dist, dim=1, descending=False)

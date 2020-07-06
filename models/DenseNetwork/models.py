@@ -25,9 +25,8 @@ class VecDataSet(Dataset):
     def __init__(self, x, top_k):
         device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
         # device = 'cpu'
-        a, q, ground_min_dist_square, topk_dists = self.precomputing(x.to(device), top_k=top_k)
-        self.anchor_idx, self.q, self.ground_min_dist_square = a.cpu(), q.cpu(), ground_min_dist_square.cpu()
-        self.topk_dists = topk_dists.cpu()
+        self.anchor_idx, self.q, self.ground_min_dist_square, self.topk_dists = \
+            self.precomputing(x, top_k=top_k, device=device)
         self.top_k = top_k
         self.x = x.cpu()
 
@@ -41,19 +40,20 @@ class VecDataSet(Dataset):
         return torch.load(path_to_tensor)
 
     @staticmethod
-    def precomputing(x, top_k):
+    def precomputing(x, top_k, device):
         """
         compute ground true nearest neighbors
         :param x:
         :param top_k: top-k neighbors that are considered
+        :param device: device used during computation
         :return: anchor_idx: each point has m points as anchors (in the case, we pick m near neighbors of x as anchors)
                  q: input_similarity
         """
-        ground_min_dist_square, anchor_idx, topk_dists = nearest_neighbors(x, top_k)
+        ground_min_dist_square, anchor_idx, topk_dists = nearest_neighbors(x, top_k, device)
 
-        q = input_inverse_similarity(x,
+        q = input_inverse_similarity(x.to(device),
                                      anchor_idx=anchor_idx,  # (n, n - 1)
-                                     min_dist_square=ground_min_dist_square.to(x))
+                                     min_dist_square=ground_min_dist_square.to(device)).cpu()
         return anchor_idx, q, ground_min_dist_square, topk_dists
 
     def __len__(self):
@@ -361,7 +361,7 @@ class Solver(object):
                                       anchor_idx=anchor_idx.to(self.device)).cpu()
         scores['loss'] = self.criterion(p.to(self.device), q.to(self.device), lam=1).cpu().detach().item()
         # recalls
-        _, topk_neighbors, _ = nearest_neighbors(x=output_embeddings, top_k=self.top_k)
+        _, topk_neighbors, _ = nearest_neighbors(x=output_embeddings, top_k=self.top_k, device=self.device)
         ground_nn = anchor_idx[:, 0].unsqueeze(dim=1)
         for r in [1, 5, 10, 20]:
             top_predictions = topk_neighbors[:, :r]  # (n, r)
