@@ -136,7 +136,7 @@ do
     --n_epoch 20 \
     --per_gpu_batch_size 90000 \
     --num_eval_per_epoch 5 \
-    --weight_decay 1e-5 \
+    --weight_decay 0 \
     --top_k ${TOP_K} \
     --hidden_dims_list ${HIDDEN_DIMS}
   done
