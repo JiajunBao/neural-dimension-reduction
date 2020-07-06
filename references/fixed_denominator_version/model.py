@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 from scipy.spatial import distance_matrix
 from utils import timer
 from tqdm.auto import tqdm
+from pathlib import Path
 
 ## CHECK FOR GPU'S ##
 CUDA = torch.cuda.is_available()
@@ -263,9 +264,11 @@ class Net(Module, Reducer):
         min_dist_dict = {i:None for i in range(N)}
         self.out('\nFitting the model...')
         losses = []
-
-        ground_min_dist_square, _, _ = nearest_neighbors(X, 1, 'cpu')
-
+        if Path('min.pth.tar').is_file():
+            ground_min_dist_square = torch.load('min.pth.tar')
+        else:
+            ground_min_dist_square, _, _ = nearest_neighbors(X.cpu(), 1, 'cpu')
+            torch.save(ground_min_dist_square, 'min.pth.tar')
         for epoch in range(epochs):
             running_loss = 0
             self.out('EPOCH: {}'.format(epoch+1))
