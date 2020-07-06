@@ -23,13 +23,13 @@ from models.DenseNetwork.loss import kl_div_add_mse_loss, input_inverse_similari
 
 class VecDataSet(Dataset):
     def __init__(self, x, top_k):
-        self.x = x
         device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
         # device = 'cpu'
         a, q, ground_min_dist_square, topk_dists = self.precomputing(x.to(device), top_k=top_k)
         self.anchor_idx, self.q, self.ground_min_dist_square = a.cpu(), q.cpu(), ground_min_dist_square.cpu()
         self.topk_dists = topk_dists.cpu()
         self.top_k = top_k
+        self.x = x.cpu()
 
     @classmethod
     def from_df(cls, path_to_dataframe, top_k):
