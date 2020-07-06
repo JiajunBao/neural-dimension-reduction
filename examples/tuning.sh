@@ -82,10 +82,29 @@ set -x
 #  done
 #done
 
-TOP_K=20
-for HIDDEN_DIMS in 200-100-100-50-50-25-25-20 200-200-100-100-100-50-50-50-25-25-25-20-20 200-200-200-100-100-100-100-50-50-50-50-25-25-25-25-20-20-20 200-200-200-200-100-100-100-100-100-50-50-50-50-50-25-25-25-25-25-20-20-20-20
+#TOP_K=20
+#for HIDDEN_DIMS in 200-100-100-50-50-25-25-20 200-200-100-100-100-50-50-50-25-25-25-20-20 200-200-200-100-100-100-100-50-50-50-50-25-25-25-25-20-20-20 200-200-200-200-100-100-100-100-100-50-50-50-50-50-25-25-25-25-25-20-20-20-20
+#do
+#  for LR in 5e-2 1e-2 5e-1 1e-1
+#  do
+#    python examples/train.py \
+#    --input_dir data \
+#    --output_dir checkpoints/${HIDDEN_DIMS}/top${TOP_K}/${LR} \
+#    --learning_rate ${LR} \
+#    --n_epoch 1200 \
+#    --per_gpu_batch_size 90000 \
+#    --num_eval_per_epoch 2 \
+#    --weight_decay 1e-5 \
+#    --top_k ${TOP_K} \
+#    --hidden_dims_list ${HIDDEN_DIMS}
+#  done
+#done
+
+TOP_K=1
+
+for HIDDEN_DIMS in 500-100-20 500-100-20-20 5000-1000-200-200
 do
-  for LR in 5e-2 1e-2 5e-1 1e-1
+  for LR in 1e-6 1e-5 1e-4 1e-3 1e-2 1e-1
   do
     python examples/train.py \
     --input_dir data \
@@ -93,28 +112,12 @@ do
     --learning_rate ${LR} \
     --n_epoch 1200 \
     --per_gpu_batch_size 90000 \
-    --num_eval_per_epoch 2 \
+    --num_eval_per_epoch 5 \
     --weight_decay 1e-5 \
     --top_k ${TOP_K} \
     --hidden_dims_list ${HIDDEN_DIMS}
   done
 done
-
-#TOP_K=1
-#LR=5e-7
-#for HIDDEN_DIMS in 500-100-20 500-100-20-20 5000-1000-200-200
-#do
-#  python examples/train.py \
-#  --input_dir data \
-#  --output_dir checkpoints/${HIDDEN_DIMS}/top${TOP_K}/${LR} \
-#  --learning_rate ${LR} \
-#  --n_epoch 1200 \
-#  --per_gpu_batch_size 90000 \
-#  --num_eval_per_epoch 5 \
-#  --weight_decay 1e-5 \
-#  --top_k ${TOP_K} \
-#  --hidden_dims_list ${HIDDEN_DIMS}
-#done
 
 # rm data/train.pth.tar
 # rm data/dev.pth.tar
