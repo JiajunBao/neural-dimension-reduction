@@ -322,7 +322,6 @@ class Solver(object):
                                       anchor_idx=self.train_dataloader.dataset.anchor_idx.to(self.device)).cpu()
         loss = self.criterion(p.to(self.device),
                               self.train_dataloader.dataset.q.to(self.device), lam=1)
-        print(loss.item())
         if self.n_gpu > 1:
             loss = loss.mean()  # mean() to average on multi-gpu.
         loss.backward()
@@ -330,7 +329,6 @@ class Solver(object):
         # update weights
         self.optimizer.step()
         # self.scheduler.step()  # Update learning rate schedule
-        print(loss.item())
         return loss.cpu().detach(), outputs.cpu().detach(), p.cpu().detach()
 
     def __forwarding_step(self, batch):
