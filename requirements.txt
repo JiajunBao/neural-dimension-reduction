@@ -20,3 +20,4 @@ torch
 runx
 notebook
 seaborn
+matplotlib
