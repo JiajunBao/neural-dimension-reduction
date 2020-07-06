@@ -264,7 +264,7 @@ class Net(Module, Reducer):
         self.out('\nFitting the model...')
         losses = []
 
-        ground_min_dist_square, _, _ = nearest_neighbors(X, 1, device)
+        ground_min_dist_square, _, _ = nearest_neighbors(X, 1, 'cpu')
 
         for epoch in range(epochs):
             running_loss = 0
