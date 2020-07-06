@@ -2,7 +2,7 @@ TOP_K=20
 #LR=1e-4
 HIDDEN_DIMS=200-100-50-25-20
 
-for LR in 1e-6 5e-5 1e-5 5e-4 1e-4 5e-3 1e-3
+for LR in 5e-7 4e-7 3e-7 2e-7 1e-7
 do
   python examples/train.py \
   --input_dir data \
