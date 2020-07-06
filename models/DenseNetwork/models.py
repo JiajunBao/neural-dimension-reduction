@@ -63,6 +63,35 @@ class VecDataSet(Dataset):
         return self.x[idx]
 
 
+class RandomAnchorDataSet(Dataset):
+    def __init__(self, x, top_k):
+        device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+        # device = 'cpu'
+        _, self.q, self.ground_min_dist_square, self.topk_dists = \
+            VecDataSet.precomputing(x, top_k=top_k, device=device)
+        self.top_k = top_k
+        self.anchor_idx = torch.randint(0, x.shape[0], (x.shape[0], 1))
+        for i in range(self.anchor_idx.shape[0]):
+            if self.anchor_idx[i][0] == i:  # if the point x itself is chosen, switch to x + 1, this case is quite f
+                self.anchor_idx[i][0] = self.anchor_idx[i][0] + 1
+        self.x = x.cpu()
+
+    @classmethod
+    def from_df(cls, path_to_dataframe, top_k):
+        x = torch.from_numpy(pd.read_csv(path_to_dataframe).to_numpy()).to(torch.float32)
+        return cls(x, top_k)
+
+    @classmethod
+    def from_dataset(cls, path_to_tensor):
+        return torch.load(path_to_tensor)
+
+    def __len__(self):
+        return self.x.shape[0]
+
+    def __getitem__(self, idx):
+        return self.x[idx]
+
+
 class Net(nn.Module):
     def __init__(self, hidden_layers, model_construct_dict):
         super(Net, self).__init__()
@@ -427,7 +456,7 @@ class Solver(object):
                 return DataLoader(dataset, shuffle=False, batch_size=batch_size, pin_memory=True)
             else:
                 print(f'inconsistent top_k: {dataset.top_k} vs {top_k}')
-        dataset = VecDataSet.from_df(input_dir / f'{split_name}.csv', top_k)
+        dataset = RandomAnchorDataSet.from_df(input_dir / f'{split_name}.csv', top_k)
         torch.save(dataset, encoded_data_path)
         print(f'construct dataset from dataframe and save dataset at ({encoded_data_path})')
         return DataLoader(dataset, shuffle=False, batch_size=batch_size, pin_memory=True)
