@@ -259,51 +259,52 @@ class Solver(object):
             # update weights
             self.optimizer.step()
             # self.scheduler.step()  # Update learning rate schedule
-            # pbar.update(1)
-        # validate and save checkpoints at the end of each epoch
-        developing_set_outputs, developing_set_metrics_scores, developing_set_p = \
-            self.validate(self.dev_dataloader)
-        # TODO: this part can be optimized to batchwise computing
+            if batch_idx + 1 == len(self.train_dataloader):
+                # validate and save checkpoints
+                developing_set_outputs, developing_set_metrics_scores, developing_set_p = \
+                    self.validate(self.dev_dataloader)
+                # TODO: this part can be optimized to batchwise computing
 
-        training_set_metrics_scores, training_set_p = \
-            self.get_scores(q=self.train_dataloader.dataset.q.to(self.device),
-                            output_embeddings=training_set_outputs,
-                            anchor_idx=self.train_dataloader.dataset.anchor_idx.to(self.device))
-        training_set_metrics_scores['train_loss'] = loss.item()
-        if self.scheduler:
-            training_set_metrics_scores['learning_rate'] = self.scheduler.get_last_lr()[0]
-        logx.metric('train', training_set_metrics_scores, global_step)
-        logx.metric('val', developing_set_metrics_scores, global_step)
-        if self.n_gpu > 1:
-            save_dict = {"model_construct_dict": self.model.model_construct_dict,
-                         "model_state_dict": self.model.module.state_dict(),
-                         "solver_construct_params_dict": self.construct_param_dict,
-                         "optimizer": self.optimizer.state_dict(),
-                         "train_metrics_scores": training_set_metrics_scores,
-                         "train_output_embeddings": training_set_outputs.cpu(),
-                         "train_p": training_set_p.cpu(),
-                         "train_q": self.train_dataloader.dataset.q.cpu(),
-                         "dev_metrics_scores": developing_set_metrics_scores,
-                         "dev_output_embeddings": developing_set_outputs.cpu(),
-                         "dev_q": self.dev_dataloader.dataset.q.cpu(),
-                         "dev_p": developing_set_p.cpu()}
-        else:
-            save_dict = {"model_construct_dict": self.model.model_construct_dict,
-                         "model_state_dict": self.model.state_dict(),
-                         "solver_construct_params_dict": self.construct_param_dict,
-                         "optimizer": self.optimizer.state_dict(),
-                         "train_metrics_scores": training_set_metrics_scores,
-                         "train_output_embeddings": training_set_outputs.cpu(),
-                         "train_p": training_set_p.cpu(),
-                         "train_q": self.train_dataloader.dataset.q.cpu(),
-                         "dev_metrics_scores": developing_set_metrics_scores,
-                         "dev_output_embeddings": developing_set_outputs.cpu(),
-                         "dev_q": self.dev_dataloader.dataset.q.cpu(),
-                         "dev_p": developing_set_p.cpu()}
-        logx.save_model(save_dict,
-                        metric=developing_set_metrics_scores['Recall@1'],
-                        epoch=global_step,
-                        higher_better=True)
+                training_set_metrics_scores, training_set_p = \
+                    self.get_scores(q=self.train_dataloader.dataset.q.to(self.device),
+                                    output_embeddings=training_set_outputs,
+                                    anchor_idx=self.train_dataloader.dataset.anchor_idx.to(self.device))
+                training_set_metrics_scores['train_loss'] = loss.item()
+                if self.scheduler:
+                    training_set_metrics_scores['learning_rate'] = self.scheduler.get_last_lr()[0]
+                logx.metric('train', training_set_metrics_scores, global_step)
+                logx.metric('val', developing_set_metrics_scores, global_step)
+                if self.n_gpu > 1:
+                    save_dict = {"model_construct_dict": self.model.model_construct_dict,
+                                 "model_state_dict": self.model.module.state_dict(),
+                                 "solver_construct_params_dict": self.construct_param_dict,
+                                 "optimizer": self.optimizer.state_dict(),
+                                 "train_metrics_scores": training_set_metrics_scores,
+                                 "train_output_embeddings": training_set_outputs.cpu(),
+                                 "train_p": training_set_p.cpu(),
+                                 "train_q": self.train_dataloader.dataset.q.cpu(),
+                                 "dev_metrics_scores": developing_set_metrics_scores,
+                                 "dev_output_embeddings": developing_set_outputs.cpu(),
+                                 "dev_q": self.dev_dataloader.dataset.q.cpu(),
+                                 "dev_p": developing_set_p.cpu()}
+                else:
+                    save_dict = {"model_construct_dict": self.model.model_construct_dict,
+                                 "model_state_dict": self.model.state_dict(),
+                                 "solver_construct_params_dict": self.construct_param_dict,
+                                 "optimizer": self.optimizer.state_dict(),
+                                 "train_metrics_scores": training_set_metrics_scores,
+                                 "train_output_embeddings": training_set_outputs.cpu(),
+                                 "train_p": training_set_p.cpu(),
+                                 "train_q": self.train_dataloader.dataset.q.cpu(),
+                                 "dev_metrics_scores": developing_set_metrics_scores,
+                                 "dev_output_embeddings": developing_set_outputs.cpu(),
+                                 "dev_q": self.dev_dataloader.dataset.q.cpu(),
+                                 "dev_p": developing_set_p.cpu()}
+                logx.save_model(save_dict,
+                                metric=developing_set_metrics_scores['Recall@1'],
+                                epoch=global_step,
+                                higher_better=True)
+                # pbar.update(1)
 
     def batch_to_device(self, batch):
         return batch.to(self.device)

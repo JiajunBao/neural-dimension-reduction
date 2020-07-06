@@ -16,7 +16,7 @@ def nearest_neighbors(x, top_k):
             ground_min_dist_square: torch.tensor (n, ) distance to the nearest neighbor
             topk_neighbors: torch.tensor (n, top_k) the index of the top-k nearest neighbors;
     """
-    batch_size = 2500
+    batch_size = 2000
     if x.shape[0] * x.shape[1] < batch_size * 200:  # direct computes the whole matrix
         dist = torch.cdist(x1=x, x2=x, p=2)  # (n, n)
         sorted_dist, indices = torch.sort(dist, dim=1, descending=False)
