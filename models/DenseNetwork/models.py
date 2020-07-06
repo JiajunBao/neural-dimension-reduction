@@ -70,11 +70,18 @@ class RandomAnchorDataSet(Dataset):
         _, self.q, self.ground_min_dist_square, self.topk_dists = \
             VecDataSet.precomputing(x, top_k=top_k, device=device)
         self.top_k = top_k
+        # generate anchors
         self.anchor_idx = torch.randint(0, x.shape[0], (x.shape[0], 1))
         for i in range(self.anchor_idx.shape[0]):
             if self.anchor_idx[i][0] == i:  # if the point x itself is chosen, switch to x + 1, this case is quite f
                 self.anchor_idx[i][0] = self.anchor_idx[i][0] + 1
         self.x = x.cpu()
+
+    def randomize_anchors(self):
+        self.anchor_idx = torch.randint(0, self.x.shape[0], (self.x.shape[0], 1))
+        for i in range(self.anchor_idx.shape[0]):
+            if self.anchor_idx[i][0] == i:  # if the point x itself is chosen, switch to x + 1, this case is quite f
+                self.anchor_idx[i][0] = self.anchor_idx[i][0] + 1
 
     @classmethod
     def from_df(cls, path_to_dataframe, top_k):
