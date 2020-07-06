@@ -358,13 +358,14 @@ class Solver(object):
         scores = dict()
         # calculate loss
         p = output_inverse_similarity(y=output_embeddings.to(self.device),
-                                      anchor_idx=anchor_idx.to(self.device)).cpu()
+                                      anchor_idx=anchor_idx).cpu()
         scores['loss'] = self.criterion(p.to(self.device), q.to(self.device), lam=1).cpu().detach().item()
         # recalls
         _, topk_neighbors, _ = nearest_neighbors(x=output_embeddings, top_k=self.top_k, device=self.device)
         ground_nn = anchor_idx[:, 0].unsqueeze(dim=1)
         for r in [1, 5, 10, 20]:
             top_predictions = topk_neighbors[:, :r]  # (n, r)
+            print(top_predictions.device, ground_nn.device)
             scores[f'Recall@{r}'] = \
                 torch.sum(top_predictions == ground_nn, dtype=torch.float).item() / ground_nn.shape[0]
         return scores, p
