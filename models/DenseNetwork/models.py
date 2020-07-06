@@ -130,7 +130,7 @@ class Solver(object):
                                  "model_construct_dict": model.model_construct_dict},
                         eager_flush=True)
         # arguments
-        self.record_training_loss_per_epoch = False
+        self.record_training_loss_per_epoch = kwargs.pop("record_training_loss_per_epoch", False)
         self.input_dir = input_dir
         self.output_dir = output_dir
         self.top_k = top_k
