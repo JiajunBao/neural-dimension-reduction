@@ -423,7 +423,7 @@ class Solver(object):
         if encoded_data_path.is_file():
             dataset = torch.load(encoded_data_path)
             print(f'load dataset from {encoded_data_path}')
-            if dataset.top_k == top_k:
+            if dataset.top_k >= top_k:
                 return DataLoader(dataset, shuffle=False, batch_size=batch_size, pin_memory=True)
             else:
                 print(f'inconsistent top_k: {dataset.top_k} vs {top_k}')
