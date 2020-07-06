@@ -103,50 +103,50 @@ set -x
 
 # remove the old dataset
 # a random anchor
-rm data/train.pth.tar
-rm data/dev.pth.tar
-TOP_K=1
-
-for HIDDEN_DIMS in 500-100-20 500-100-20-20 5000-1000-200-200
-do
-  for LR in 1e-1 1e-2 1e-3 1e-4 1e-5  1e-6
-  do
-    rm -rf checkpoints/random-anchors-${HIDDEN_DIMS}/top${TOP_K}/${LR}
-    python examples/train.py \
-    --input_dir data \
-    --output_dir checkpoints/random-anchors-${HIDDEN_DIMS}/top${TOP_K}/${LR} \
-    --learning_rate ${LR} \
-    --n_epoch 600 \
-    --per_gpu_batch_size 90000 \
-    --num_eval_per_epoch 5 \
-    --weight_decay 0 \
-    --top_k ${TOP_K} \
-    --hidden_dims_list ${HIDDEN_DIMS}
-  done
-done
-
-
 #rm data/train.pth.tar
 #rm data/dev.pth.tar
-#
 #TOP_K=1
 #
 #for HIDDEN_DIMS in 500-100-20 500-100-20-20 5000-1000-200-200
 #do
-#  for LR in 1e-6 1e-5 1e-4 1e-3 1e-2 1e-1
+#  for LR in 1e-1 1e-2 1e-3 1e-4 1e-5  1e-6
 #  do
+#    rm -rf checkpoints/random-anchors-${HIDDEN_DIMS}/top${TOP_K}/${LR}
 #    python examples/train.py \
 #    --input_dir data \
-#    --output_dir checkpoints/${HIDDEN_DIMS}/top${TOP_K}/${LR} \
+#    --output_dir checkpoints/random-anchors-${HIDDEN_DIMS}/top${TOP_K}/${LR} \
 #    --learning_rate ${LR} \
-#    --n_epoch 1200 \
+#    --n_epoch 600 \
 #    --per_gpu_batch_size 90000 \
 #    --num_eval_per_epoch 5 \
-#    --weight_decay 1e-5 \
+#    --weight_decay 0 \
 #    --top_k ${TOP_K} \
 #    --hidden_dims_list ${HIDDEN_DIMS}
 #  done
 #done
+#
+
+rm data/train.pth.tar
+rm data/dev.pth.tar
+
+TOP_K=1
+
+for HIDDEN_DIMS in 500-100-20 500-100-20-20 5000-1000-200-200
+do
+  for LR in 1e-6 1e-5 1e-4 1e-3 1e-2 1e-1
+  do
+    python examples/train.py \
+    --input_dir data \
+    --output_dir checkpoints/${HIDDEN_DIMS}/top${TOP_K}/${LR} \
+    --learning_rate ${LR} \
+    --n_epoch 1200 \
+    --per_gpu_batch_size 90000 \
+    --num_eval_per_epoch 5 \
+    --weight_decay 1e-5 \
+    --top_k ${TOP_K} \
+    --hidden_dims_list ${HIDDEN_DIMS}
+  done
+done
 
 
 # rm data/train.pth.tar
