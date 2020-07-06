@@ -279,10 +279,12 @@ class Solver(object):
                                  "train_metrics_scores": training_set_metrics_scores,
                                  "train_output_embeddings": training_set_outputs.cpu(),
                                  "train_q": self.train_dataloader.dataset.q.cpu(),
+                                 "train_anchor_idx": self.train_dataloader.dataset.anchor_idx.cpu(),
                                  "dev_metrics_scores": developing_set_metrics_scores,
                                  "dev_output_embeddings": developing_set_outputs.cpu(),
                                  "dev_q": self.dev_dataloader.dataset.q.cpu(),
-                                 "dev_p": developing_set_p.cpu()}
+                                 "dev_p": developing_set_p.cpu(),
+                                 "dev_anchor_idx": self.dev_dataloader.dataset.anchor_idx.cpu()}
                 else:
                     save_dict = {"model_construct_dict": self.model.model_construct_dict,
                                  "model_state_dict": self.model.state_dict(),
@@ -291,10 +293,12 @@ class Solver(object):
                                  "train_metrics_scores": training_set_metrics_scores,
                                  "train_output_embeddings": training_set_outputs.cpu(),
                                  "train_q": self.train_dataloader.dataset.q.cpu(),
+                                 "train_anchor_idx": self.train_dataloader.dataset.anchor_idx.cpu(),
                                  "dev_metrics_scores": developing_set_metrics_scores,
                                  "dev_output_embeddings": developing_set_outputs.cpu(),
                                  "dev_q": self.dev_dataloader.dataset.q.cpu(),
-                                 "dev_p": developing_set_p.cpu()}
+                                 "dev_p": developing_set_p.cpu(),
+                                 "dev_anchor_idx": self.dev_dataloader.dataset.anchor_idx.cpu()}
                 logx.save_model(save_dict,
                                 metric=developing_set_metrics_scores['Recall@1'],
                                 epoch=global_step,
