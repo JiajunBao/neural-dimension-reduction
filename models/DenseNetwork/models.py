@@ -241,10 +241,10 @@ class Solver(object):
 
     def validate(self, dataloader):
         outputs = self.__forward_batch_plus(dataloader)
-        metrics_scores = self.get_scores(q=self.dev_dataloader.dataset.q.to(self.device),
-                                         output_embeddings=outputs,
-                                         anchor_idx=dataloader.dataset.anchor_idx.to(self.device))
-        return outputs, metrics_scores
+        metrics_scores, p = self.get_scores(q=dataloader.dataset.q.to(self.device),
+                                            output_embeddings=outputs,
+                                            anchor_idx=dataloader.dataset.anchor_idx.to(self.device))
+        return outputs, metrics_scores, p
 
     def __train_per_epoch(self, epoch_idx, steps_per_eval):
         # with tqdm(total=len(self.train_dataloader), desc=f"Epoch {epoch_idx}") as pbar:
@@ -266,7 +266,7 @@ class Solver(object):
             # self.scheduler.step()  # Update learning rate schedule
             if (batch_idx + 1) % steps_per_eval == 0:
                 # validate and save checkpoints
-                outputs, metrics_scores = self.validate(self.dev_dataloader)
+                outputs, metrics_scores, p = self.validate(self.dev_dataloader)
                 logx.metric('val', metrics_scores, global_step)
                 if self.n_gpu > 1:
                     save_dict = {"model_construct_dict": self.model.model_construct_dict,
@@ -274,14 +274,18 @@ class Solver(object):
                                  "solver_construct_params_dict": self.construct_param_dict,
                                  "optimizer": self.optimizer.state_dict(),
                                  "metrics_scores": metrics_scores,
-                                 "output_embeddings": outputs}
+                                 "output_embeddings": outputs,
+                                 "q": self.dev_dataloader.dataset.q.cpu(),
+                                 "p": p.cpu()}
                 else:
                     save_dict = {"model_construct_dict": self.model.model_construct_dict,
                                  "model_state_dict": self.model.state_dict(),
                                  "solver_construct_params_dict": self.construct_param_dict,
                                  "optimizer": self.optimizer.state_dict(),
                                  "metrics_scores": metrics_scores,
-                                 "output_embeddings": outputs}
+                                 "output_embeddings": outputs,
+                                 "q": self.dev_dataloader.dataset.q.cpu(),
+                                 "p": p.cpu()}
                 logx.save_model(save_dict,
                                 metric=metrics_scores['Recall@1'],
                                 epoch=global_step,
@@ -344,7 +348,7 @@ class Solver(object):
             top_predictions = topk_neighbors[:, :r]  # (n, r)
             scores[f'Recall@{r}'] = \
                 torch.sum(top_predictions == ground_nn, dtype=torch.float).item() / ground_nn.shape[0]
-        return scores
+        return scores, p
 
     def __forward_batch_plus(self, dataloader, verbose=False):
         preds_list = list()
