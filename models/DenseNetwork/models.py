@@ -63,42 +63,6 @@ class VecDataSet(Dataset):
         return self.x[idx]
 
 
-class RandomAnchorDataSet(Dataset):
-    def __init__(self, x, top_k):
-        device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-        # device = 'cpu'
-        self.anchor_idx, self.q, self.ground_min_dist_square, self.topk_dists = \
-            VecDataSet.precomputing(x, top_k=top_k, device=device)
-        self.top_k = top_k
-        # generate anchors
-        self.random_anchors = torch.randint(0, x.shape[0], (x.shape[0], 1))
-        for i in range(self.random_anchors.shape[0]):
-            if self.random_anchors[i][0] == i:  # if the point x itself is chosen, switch to x + 1, this case is quite f
-                self.random_anchors[i][0] = self.random_anchors[i][0] + 1
-        self.x = x.cpu()
-
-    def update_random_anchors(self):
-        self.random_anchors = torch.randint(0, self.x.shape[0], (self.x.shape[0], 1))
-        for i in range(self.random_anchors.shape[0]):
-            if self.random_anchors[i][0] == i:  # if the point x itself is chosen, switch to x + 1, this case is quite f
-                self.random_anchors[i][0] = self.random_anchors[i][0] + 1
-
-    @classmethod
-    def from_df(cls, path_to_dataframe, top_k):
-        x = torch.from_numpy(pd.read_csv(path_to_dataframe).to_numpy()).to(torch.float32)
-        return cls(x, top_k)
-
-    @classmethod
-    def from_dataset(cls, path_to_tensor):
-        return torch.load(path_to_tensor)
-
-    def __len__(self):
-        return self.x.shape[0]
-
-    def __getitem__(self, idx):
-        return self.x[idx]
-
-
 class Net(nn.Module):
     def __init__(self, hidden_layers, model_construct_dict):
         super(Net, self).__init__()
@@ -298,7 +262,7 @@ class Solver(object):
                     training_set_metrics_scores, training_set_p = \
                         self.get_scores(q=self.train_dataloader.dataset.q,
                                         output_embeddings=training_set_outputs,
-                                        anchor_idx=self.train_dataloader.dataset.random_anchors)
+                                        anchor_idx=self.train_dataloader.dataset.anchor_idx)
                     training_set_metrics_scores['train_p'] = training_set_p.cpu(),
                 else:
                     training_set_metrics_scores = dict()
@@ -340,8 +304,6 @@ class Solver(object):
                                 epoch=global_step,
                                 higher_better=True)
                 # pbar.update(1)
-            self.train_dataloader.dataset.update_random_anchors()
-            self.train_dataloader = DataLoader(self.train_dataloader.dataset, shuffle=False, batch_size=90000, pin_memory=True)
 
     def batch_to_device(self, batch):
         return batch.to(self.device)
@@ -357,7 +319,7 @@ class Solver(object):
         self.model.train()
         outputs = self.__forwarding_step(batch)
         p = output_inverse_similarity(y=outputs.to(self.device),
-                                      anchor_idx=self.train_dataloader.dataset.random_anchors.to(self.device)).cpu()
+                                      anchor_idx=self.train_dataloader.dataset.anchor_idx.to(self.device)).cpu()
         loss = self.criterion(p.to(self.device),
                               self.train_dataloader.dataset.q.to(self.device), lam=1)
         if self.n_gpu > 1:
@@ -465,7 +427,7 @@ class Solver(object):
                 return DataLoader(dataset, shuffle=False, batch_size=batch_size, pin_memory=True)
             else:
                 print(f'inconsistent top_k: {dataset.top_k} vs {top_k}')
-        dataset = RandomAnchorDataSet.from_df(input_dir / f'{split_name}.csv', top_k)
+        dataset = VecDataSet.from_df(input_dir / f'{split_name}.csv', top_k)
         torch.save(dataset, encoded_data_path)
         print(f'construct dataset from dataframe and save dataset at ({encoded_data_path})')
         return DataLoader(dataset, shuffle=False, batch_size=batch_size, pin_memory=True)
