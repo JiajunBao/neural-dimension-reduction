@@ -257,11 +257,14 @@ class Solver(object):
                 developing_set_outputs, developing_set_metrics_scores, developing_set_p = \
                     self.validate(self.dev_dataloader)
                 # TODO: this part can be optimized to batchwise computing
-
-                training_set_metrics_scores, training_set_p = \
-                    self.get_scores(q=self.train_dataloader.dataset.q,
-                                    output_embeddings=training_set_outputs,
-                                    anchor_idx=self.train_dataloader.dataset.anchor_idx)
+                if self.record_training_loss_per_epoch:
+                    training_set_metrics_scores, training_set_p = \
+                        self.get_scores(q=self.train_dataloader.dataset.q,
+                                        output_embeddings=training_set_outputs,
+                                        anchor_idx=self.train_dataloader.dataset.anchor_idx)
+                    training_set_metrics_scores['train_p'] = training_set_p.cpu(),
+                else:
+                    training_set_metrics_scores = dict()
                 training_set_metrics_scores['train_loss'] = training_set_loss.item()
                 if self.scheduler:
                     training_set_metrics_scores['learning_rate'] = self.scheduler.get_last_lr()[0]
@@ -274,7 +277,6 @@ class Solver(object):
                                  "optimizer": self.optimizer.state_dict(),
                                  "train_metrics_scores": training_set_metrics_scores,
                                  "train_output_embeddings": training_set_outputs.cpu(),
-                                 "train_p": training_set_p.cpu(),
                                  "train_q": self.train_dataloader.dataset.q.cpu(),
                                  "dev_metrics_scores": developing_set_metrics_scores,
                                  "dev_output_embeddings": developing_set_outputs.cpu(),
@@ -287,7 +289,6 @@ class Solver(object):
                                  "optimizer": self.optimizer.state_dict(),
                                  "train_metrics_scores": training_set_metrics_scores,
                                  "train_output_embeddings": training_set_outputs.cpu(),
-                                 "train_p": training_set_p.cpu(),
                                  "train_q": self.train_dataloader.dataset.q.cpu(),
                                  "dev_metrics_scores": developing_set_metrics_scores,
                                  "dev_output_embeddings": developing_set_outputs.cpu(),
