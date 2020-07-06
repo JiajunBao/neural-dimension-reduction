@@ -82,5 +82,23 @@ do
   done
 done
 
+TOP_K=20
+for HIDDEN_DIMS in 200-100-100-50-50-25-25-20 200-200-100-100-100-50-50-50-25-25-25-20-20 200-200-200-100-100-100-100-50-50-50-50-25-25-25-25-20-20-20 200-200-200-200-100-100-100-100-100-50-50-50-50-50-25-25-25-25-25-20-20-20-20
+do
+  for LR in 5e-2 5e-6 5e-5 5e-4 5e-3
+  do
+    python examples/train.py \
+    --input_dir data \
+    --output_dir checkpoints/${HIDDEN_DIMS}/top${TOP_K}/${LR} \
+    --learning_rate ${LR} \
+    --n_epoch 1200 \
+    --per_gpu_batch_size 90000 \
+    --num_eval_per_epoch 2 \
+    --weight_decay 1e-5 \
+    --top_k ${TOP_K} \
+    --hidden_dims_list ${HIDDEN_DIMS}
+  done
+done
+
 # rm data/train.pth.tar
 # rm data/dev.pth.tar

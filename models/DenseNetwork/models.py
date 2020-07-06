@@ -251,46 +251,59 @@ class Solver(object):
         for batch_idx, batch in enumerate(self.train_dataloader):
             # assume that the whole input matrix fits the GPU memory
             global_step = epoch_idx * len(self.train_dataloader) + batch_idx
-            loss = self.__training_step(batch)
+            loss, training_set_outputs, training_set_p = self.__training_step(batch)
             if self.n_gpu > 1:
                 loss = loss.mean()  # mean() to average on multi-gpu.
             loss.backward()
-            if self.scheduler:
-                logx.metric('train', {"tr_loss": loss.item(),
-                                      "learning_rate": self.scheduler.get_last_lr()[0]}, global_step)
-            else:
-                logx.metric('train', {"tr_loss": loss.item()}, global_step)
             # pbar.set_postfix_str(f"tr_loss: {loss.item():.5f}")
             # update weights
             self.optimizer.step()
             # self.scheduler.step()  # Update learning rate schedule
-            if (batch_idx + 1) % steps_per_eval == 0:
-                # validate and save checkpoints
-                outputs, metrics_scores, p = self.validate(self.dev_dataloader)
-                logx.metric('val', metrics_scores, global_step)
-                if self.n_gpu > 1:
-                    save_dict = {"model_construct_dict": self.model.model_construct_dict,
-                                 "model_state_dict": self.model.module.state_dict(),
-                                 "solver_construct_params_dict": self.construct_param_dict,
-                                 "optimizer": self.optimizer.state_dict(),
-                                 "metrics_scores": metrics_scores,
-                                 "output_embeddings": outputs,
-                                 "q": self.dev_dataloader.dataset.q.cpu(),
-                                 "p": p.cpu()}
-                else:
-                    save_dict = {"model_construct_dict": self.model.model_construct_dict,
-                                 "model_state_dict": self.model.state_dict(),
-                                 "solver_construct_params_dict": self.construct_param_dict,
-                                 "optimizer": self.optimizer.state_dict(),
-                                 "metrics_scores": metrics_scores,
-                                 "output_embeddings": outputs,
-                                 "q": self.dev_dataloader.dataset.q.cpu(),
-                                 "p": p.cpu()}
-                logx.save_model(save_dict,
-                                metric=metrics_scores['Recall@1'],
-                                epoch=global_step,
-                                higher_better=True)
-                # pbar.update(1)
+            # pbar.update(1)
+        # validate and save checkpoints at the end of each epoch
+        developing_set_outputs, developing_set_metrics_scores, developing_set_p = \
+            self.validate(self.dev_dataloader)
+        # TODO: this part can be optimized to batchwise computing
+
+        training_set_metrics_scores, training_set_p = \
+            self.get_scores(q=self.train_dataloader.dataset.q.to(self.device),
+                            output_embeddings=training_set_outputs,
+                            anchor_idx=self.train_dataloader.dataset.anchor_idx.to(self.device))
+        training_set_metrics_scores['train_loss'] = loss.item()
+        if self.scheduler:
+            training_set_metrics_scores['learning_rate'] = self.scheduler.get_last_lr()[0]
+        logx.metric('train', training_set_metrics_scores, global_step)
+        logx.metric('val', developing_set_metrics_scores, global_step)
+        if self.n_gpu > 1:
+            save_dict = {"model_construct_dict": self.model.model_construct_dict,
+                         "model_state_dict": self.model.module.state_dict(),
+                         "solver_construct_params_dict": self.construct_param_dict,
+                         "optimizer": self.optimizer.state_dict(),
+                         "train_metrics_scores": training_set_metrics_scores,
+                         "train_output_embeddings": training_set_outputs.cpu(),
+                         "train_p": training_set_p.cpu(),
+                         "train_q": self.train_dataloader.dataset.q.cpu(),
+                         "dev_metrics_scores": developing_set_metrics_scores,
+                         "dev_output_embeddings": developing_set_outputs.cpu(),
+                         "dev_q": self.dev_dataloader.dataset.q.cpu(),
+                         "dev_p": developing_set_p.cpu()}
+        else:
+            save_dict = {"model_construct_dict": self.model.model_construct_dict,
+                         "model_state_dict": self.model.state_dict(),
+                         "solver_construct_params_dict": self.construct_param_dict,
+                         "optimizer": self.optimizer.state_dict(),
+                         "train_metrics_scores": training_set_metrics_scores,
+                         "train_output_embeddings": training_set_outputs.cpu(),
+                         "train_p": training_set_p.cpu(),
+                         "train_q": self.train_dataloader.dataset.q.cpu(),
+                         "dev_metrics_scores": developing_set_metrics_scores,
+                         "dev_output_embeddings": developing_set_outputs.cpu(),
+                         "dev_q": self.dev_dataloader.dataset.q.cpu(),
+                         "dev_p": developing_set_p.cpu()}
+        logx.save_model(save_dict,
+                        metric=developing_set_metrics_scores['Recall@1'],
+                        epoch=global_step,
+                        higher_better=True)
 
     def batch_to_device(self, batch):
         return batch.to(self.device)
@@ -307,7 +320,7 @@ class Solver(object):
         outputs = self.__forwarding_step(batch)
         p = output_inverse_similarity(y=outputs, anchor_idx=self.train_dataloader.dataset.anchor_idx.to(self.device))
         loss = self.criterion(p, self.train_dataloader.dataset.q.to(self.device), lam=1)
-        return loss
+        return loss, outputs, p
 
     def __forwarding_step(self, batch):
         """
