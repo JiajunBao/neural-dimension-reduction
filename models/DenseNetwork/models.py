@@ -266,7 +266,7 @@ class Solver(object):
                     training_set_metrics_scores['train_p'] = training_set_p.cpu(),
                 else:
                     training_set_metrics_scores = dict()
-                training_set_metrics_scores['train_loss'] = training_set_loss.item()
+                training_set_metrics_scores['tr_loss'] = training_set_loss.item()
                 if self.scheduler:
                     training_set_metrics_scores['learning_rate'] = self.scheduler.get_last_lr()[0]
                 logx.metric('train', training_set_metrics_scores, global_step)
