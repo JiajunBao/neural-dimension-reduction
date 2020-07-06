@@ -353,6 +353,32 @@ class Solver(object):
         outputs = self.model(batch_inputs)
         return outputs.cpu()
 
+    @staticmethod
+    def static_get_scores(q, output_embeddings, anchor_idx, device, criterion, top_k):
+        """
+
+        :param q: torch.tensor (n, ) input similarity
+        :param output_embeddings: torch.tensor (n, d2) output embeddings from the network
+        :param anchor_idx: (n, m) each point has m points as anchors
+        :param device: device for computation
+        :param criterion: evaluation criterion
+        :param top_k: the top-k considered
+        :return:
+        """
+        scores = dict()
+        # calculate loss
+        p = output_inverse_similarity(y=output_embeddings.to(device),
+                                      anchor_idx=anchor_idx).cpu()
+        scores['loss'] = criterion(p.to(device), q.to(device), lam=1).cpu().detach().item()
+        # recalls
+        _, topk_neighbors, _ = nearest_neighbors(x=output_embeddings, top_k=top_k, device=device)
+        ground_nn = anchor_idx[:, 0].unsqueeze(dim=1)
+        for r in [1, 5, 10, 20]:
+            top_predictions = topk_neighbors[:, :r]  # (n, r)
+            scores[f'Recall@{r}'] = \
+                torch.sum(top_predictions == ground_nn, dtype=torch.float).item() / ground_nn.shape[0]
+        return scores, p
+
     def get_scores(self, q, output_embeddings, anchor_idx):
         """
 
@@ -361,19 +387,7 @@ class Solver(object):
         :param anchor_idx: (n, m) each point has m points as anchors
         :return:
         """
-        scores = dict()
-        # calculate loss
-        p = output_inverse_similarity(y=output_embeddings.to(self.device),
-                                      anchor_idx=anchor_idx).cpu()
-        scores['loss'] = self.criterion(p.to(self.device), q.to(self.device), lam=1).cpu().detach().item()
-        # recalls
-        _, topk_neighbors, _ = nearest_neighbors(x=output_embeddings, top_k=self.top_k, device=self.device)
-        ground_nn = anchor_idx[:, 0].unsqueeze(dim=1)
-        for r in [1, 5, 10, 20]:
-            top_predictions = topk_neighbors[:, :r]  # (n, r)
-            scores[f'Recall@{r}'] = \
-                torch.sum(top_predictions == ground_nn, dtype=torch.float).item() / ground_nn.shape[0]
-        return scores, p
+        return self.static_get_scores(q, output_embeddings, anchor_idx, self.device, self.criterion, self.top_k)
 
     def __forward_batch_plus(self, dataloader, verbose=False):
         preds_list = list()
