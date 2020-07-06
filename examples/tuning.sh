@@ -166,5 +166,6 @@ do
   --top_k ${TOP_K} \
   --hidden_dims_list ${HIDDEN_DIMS}
 done
+
 # rm data/train.pth.tar
 # rm data/dev.pth.tar
