@@ -259,9 +259,9 @@ class Solver(object):
                 # TODO: this part can be optimized to batchwise computing
 
                 training_set_metrics_scores, training_set_p = \
-                    self.get_scores(q=self.train_dataloader.dataset.q.to(self.device),
+                    self.get_scores(q=self.train_dataloader.dataset.q,
                                     output_embeddings=training_set_outputs,
-                                    anchor_idx=self.train_dataloader.dataset.anchor_idx.to(self.device))
+                                    anchor_idx=self.train_dataloader.dataset.anchor_idx)
                 training_set_metrics_scores['train_loss'] = training_set_loss.item()
                 if self.scheduler:
                     training_set_metrics_scores['learning_rate'] = self.scheduler.get_last_lr()[0]
