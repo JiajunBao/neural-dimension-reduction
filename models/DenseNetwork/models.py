@@ -370,7 +370,7 @@ class Solver(object):
                                       anchor_idx=anchor_idx).cpu()
         scores['loss'] = criterion(p.to(device), q.to(device), lam=1).cpu().detach().item()
         # recalls
-        _, topk_neighbors, _ = nearest_neighbors(x=output_embeddings, top_k=top_k, device=device)
+        _, topk_neighbors, _ = nearest_neighbors(x=output_embeddings, top_k=max(20, top_k), device=device)
         ground_nn = anchor_idx[:, 0].unsqueeze(dim=1)
         for r in [1, 5, 10, 20]:
             top_predictions = topk_neighbors[:, :r]  # (n, r)
