@@ -137,7 +137,7 @@ TOP_K=1
 
 for HIDDEN_DIMS in 500-100-20 500-100-20-20 5000-1000-200-200
 do
-  for LR in 1e-6 1e-5 1e-4 1e-3 1e-2 1e-1
+  for LR in 5e-7 1e-6 1e-5 1e-4 1e-3 1e-2 1e-1
   do
     python examples/train.py \
     --input_dir data \
@@ -152,8 +152,8 @@ do
   done
 done
 
-rm data/train.pth.tar
-rm data/dev.pth.tar
+#rm data/train.pth.tar
+#rm data/dev.pth.tar
 
 TOP_K=20
 LR=5e-7
