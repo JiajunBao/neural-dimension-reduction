@@ -2,7 +2,7 @@ import torch
 from scipy.spatial import distance_matrix
 import numpy
 from tqdm.auto import tqdm
-from models.DenseNetwork import ANCHOR_SIZE
+from src.models.DenseNetwork import ANCHOR_SIZE
 
 STABLE_FACTOR = 1e-7
 

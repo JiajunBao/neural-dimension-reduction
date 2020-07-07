@@ -5,7 +5,7 @@ set -x
 
 #for LR in 5e-7 4e-7 3e-7 2e-7 1e-7
 #do
-#  python examples/train.py \
+#  python models/train.py \
 #  --input_dir data \
 #  --output_dir checkpoints/1/top${TOP_K}/${LR} \
 #  --learning_rate ${LR} \
@@ -19,7 +19,7 @@ set -x
 
 #for LR in 6e-7 7e-7 8e-7 9e-7
 #do
-#  python examples/train.py \
+#  python models/train.py \
 #  --input_dir data \
 #  --output_dir checkpoints/1/top${TOP_K}/${LR} \
 #  --learning_rate ${LR} \
@@ -35,7 +35,7 @@ set -x
 #LR=5e-7
 #for HIDDEN_DIMS in 500-100-20 500-100-20-20 5000-1000-200-200
 #do
-#  python examples/train.py \
+#  python models/train.py \
 #  --input_dir data \
 #  --output_dir checkpoints/${HIDDEN_DIMS}/top${TOP_K}/${LR} \
 #  --learning_rate ${LR} \
@@ -55,7 +55,7 @@ LR=5e-7
 HIDDEN_DIMS=200-100-50-25-20
 for TOP_K in 1 3 5 7 9 11 13 15 17 19 21
 do
-  python examples/train.py \
+  python models/train.py \
   --input_dir data \
   --output_dir checkpoints/${HIDDEN_DIMS}/top${TOP_K}/${LR} \
   --learning_rate ${LR} \
@@ -73,7 +73,7 @@ done
 #do
 #  for LR in 5e-7 5e-6 5e-5 5e-4 5e-3
 #  do
-#    python examples/train.py \
+#    python models/train.py \
 #    --input_dir data \
 #    --output_dir checkpoints/${HIDDEN_DIMS}/top${TOP_K}/${LR} \
 #    --learning_rate ${LR} \
@@ -91,7 +91,7 @@ done
 #do
 #  for LR in 5e-2 1e-2 5e-1 1e-1
 #  do
-#    python examples/train.py \
+#    python models/train.py \
 #    --input_dir data \
 #    --output_dir checkpoints/${HIDDEN_DIMS}/top${TOP_K}/${LR} \
 #    --learning_rate ${LR} \
@@ -116,7 +116,7 @@ done
 #  for LR in 5e-7 1e-2 1e-3 1e-4 1e-5  1e-6
 #  do
 #    rm -rf checkpoints/random-anchors-${HIDDEN_DIMS}/top${TOP_K}/${LR}
-#    python examples/train.py \
+#    python models/train.py \
 #    --input_dir data \
 #    --output_dir checkpoints/random-anchors-${HIDDEN_DIMS}/top${TOP_K}/${LR} \
 #    --learning_rate ${LR} \
@@ -139,7 +139,7 @@ for HIDDEN_DIMS in 500-100-20 500-100-20-20 5000-1000-200-200
 do
   for LR in 5e-7 1e-6 1e-5 1e-4 1e-3 1e-2 1e-1
   do
-    python examples/train.py \
+    python models/train.py \
     --input_dir data \
     --output_dir checkpoints/${HIDDEN_DIMS}/top${TOP_K}/${LR} \
     --learning_rate ${LR} \
@@ -159,7 +159,7 @@ TOP_K=20
 LR=5e-7
 for HIDDEN_DIMS in 5000-100-20-20 5000-1000-20-20 5000-1000-200-20
 do
-  python examples/train.py \
+  python models/train.py \
   --input_dir data \
   --output_dir checkpoints/${HIDDEN_DIMS}/top${TOP_K}/${LR} \
   --learning_rate ${LR} \

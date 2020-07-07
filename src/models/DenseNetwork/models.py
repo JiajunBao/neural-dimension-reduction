@@ -15,7 +15,7 @@ from runx.logx import logx
 from torch.utils.data import DataLoader
 from tqdm.auto import tqdm
 
-from models.DenseNetwork.loss import kl_div_add_mse_loss, input_inverse_similarity, output_inverse_similarity, \
+from src.models.DenseNetwork.loss import kl_div_add_mse_loss, input_inverse_similarity, output_inverse_similarity, \
     nearest_neighbors
 
 # TOP_K = 20

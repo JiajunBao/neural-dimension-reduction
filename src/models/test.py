@@ -1,4 +1,5 @@
-from models.DenseNetwork.loss import nearest_neighbors, kl_div_add_mse_loss
+import torch
+from src.models.DenseNetwork.loss import nearest_neighbors, kl_div_add_mse_loss
 import torch
 
 
