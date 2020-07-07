@@ -32,6 +32,7 @@ class VecDataSet(Dataset):
 
     @classmethod
     def from_df(cls, path_to_dataframe, top_k):
+        print(f'Generate dataset top_k = {top_k}')
         x = torch.from_numpy(pd.read_csv(path_to_dataframe).to_numpy()).to(torch.float32)
         return cls(x, top_k)
 
