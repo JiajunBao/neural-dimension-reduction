@@ -245,7 +245,8 @@ class Solver(object):
         outputs = self.__forward_batch_plus(dataloader)
         metrics_scores, p = self.get_scores(q=dataloader.dataset.q,
                                             output_embeddings=outputs,
-                                            anchor_idx=dataloader.dataset.anchor_idx)
+                                            anchor_idx=dataloader.dataset.anchor_idx,
+                                            ground_min_dist_square=dataloader.dataset.ground_min_dist_square)
         return outputs, metrics_scores, p
 
     def __train_per_epoch(self, epoch_idx, steps_per_eval):
@@ -263,7 +264,8 @@ class Solver(object):
                     training_set_metrics_scores, training_set_p = \
                         self.get_scores(q=self.train_dataloader.dataset.q,
                                         output_embeddings=training_set_outputs,
-                                        anchor_idx=self.train_dataloader.dataset.anchor_idx)
+                                        anchor_idx=self.train_dataloader.dataset.anchor_idx,
+                                        ground_min_dist_square=self.train_dataloader.dataset.ground_min_dist_square)
                     training_set_metrics_scores['train_p'] = training_set_p.cpu(),
                 else:
                     training_set_metrics_scores = dict()
@@ -319,8 +321,12 @@ class Solver(object):
         self.model.zero_grad()  # reset gradient
         self.model.train()
         outputs = self.__forwarding_step(batch)
-        p = output_inverse_similarity(y=outputs.to(self.device),
-                                      anchor_idx=self.train_dataloader.dataset.anchor_idx.to(self.device)).cpu()
+        p = input_inverse_similarity(x=outputs.to(self.device),
+                                     anchor_idx=self.train_dataloader.dataset.anchor_idx.to(self.device),
+                                     min_dist_square=self.train_dataloader.dataset.ground_min_dist_square.to(self.device),
+                                     approximate_min_dist=False).cpu()
+        # p = output_inverse_similarity(y=outputs.to(self.device),
+        #                               anchor_idx=self.train_dataloader.dataset.anchor_idx.to(self.device)).cpu()
         loss = self.criterion(p.to(self.device),
                               self.train_dataloader.dataset.q.to(self.device), lam=1)
         if self.n_gpu > 1:
@@ -353,7 +359,7 @@ class Solver(object):
         return outputs.cpu()
 
     @staticmethod
-    def static_get_scores(q, output_embeddings, anchor_idx, device, criterion, top_k):
+    def static_get_scores(q, output_embeddings, anchor_idx, device, criterion, top_k, ground_min_dist_square):
         """
 
         :param q: torch.tensor (n, ) input similarity
@@ -366,8 +372,13 @@ class Solver(object):
         """
         scores = dict()
         # calculate loss
-        p = output_inverse_similarity(y=output_embeddings.to(device),
-                                      anchor_idx=anchor_idx).cpu()
+        p = input_inverse_similarity(x=output_embeddings.to(device),
+                                     anchor_idx=anchor_idx,
+                                     min_dist_square=ground_min_dist_square.to(device),
+                                     approximate_min_dist=False).cpu()
+
+        # p = output_inverse_similarity(y=output_embeddings.to(device),
+        #                               anchor_idx=anchor_idx).cpu()
         scores['loss'] = criterion(p.to(device), q.to(device), lam=1).cpu().detach().item()
         # recalls
         _, topk_neighbors, _ = nearest_neighbors(x=output_embeddings, top_k=max(20, top_k), device=device)
@@ -378,7 +389,7 @@ class Solver(object):
                 torch.sum(top_predictions == ground_nn, dtype=torch.float).item() / ground_nn.shape[0]
         return scores, p
 
-    def get_scores(self, q, output_embeddings, anchor_idx):
+    def get_scores(self, q, output_embeddings, anchor_idx, ground_min_dist_square=None):
         """
 
         :param q: torch.tensor (n, ) input similarity
@@ -386,7 +397,8 @@ class Solver(object):
         :param anchor_idx: (n, m) each point has m points as anchors
         :return:
         """
-        return self.static_get_scores(q, output_embeddings, anchor_idx, self.device, self.criterion, self.top_k)
+        return self.static_get_scores(q, output_embeddings, anchor_idx, self.device, self.criterion,
+                                      self.top_k, ground_min_dist_square)
 
     def __forward_batch_plus(self, dataloader, verbose=False):
         preds_list = list()
