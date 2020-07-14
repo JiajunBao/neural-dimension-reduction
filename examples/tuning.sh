@@ -48,24 +48,24 @@ set -x
 #done
 #
 
-rm data/train.pth.tar
-rm data/dev.pth.tar
-
-LR=5e-7
-HIDDEN_DIMS=200-100-50-25-20
-for TOP_K in 1 3 5 7 9 11 13 15 17 19 21
-do
-  python models/train.py \
-  --input_dir data \
-  --output_dir checkpoints/${HIDDEN_DIMS}/top${TOP_K}/${LR} \
-  --learning_rate ${LR} \
-  --n_epoch 600 \
-  --per_gpu_batch_size 90000 \
-  --num_eval_per_epoch 2 \
-  --weight_decay 1e-5 \
-  --top_k ${TOP_K} \
-  --hidden_dims_list ${HIDDEN_DIMS}
-done
+#rm data/train.pth.tar
+#rm data/dev.pth.tar
+#
+#LR=5e-7
+#HIDDEN_DIMS=200-100-50-25-20
+#for TOP_K in 1 3 5 7 9 11 13 15 17 19 21
+#do
+#  python models/train.py \
+#  --input_dir data \
+#  --output_dir checkpoints/${HIDDEN_DIMS}/top${TOP_K}/${LR} \
+#  --learning_rate ${LR} \
+#  --n_epoch 600 \
+#  --per_gpu_batch_size 90000 \
+#  --num_eval_per_epoch 2 \
+#  --weight_decay 1e-5 \
+#  --top_k ${TOP_K} \
+#  --hidden_dims_list ${HIDDEN_DIMS}
+#done
 #
 #
 #TOP_K=20
@@ -133,43 +133,61 @@ done
 #rm data/train.pth.tar
 #rm data/dev.pth.tar
 #
-TOP_K=1
-
-for HIDDEN_DIMS in 500-100-20 500-100-20-20 5000-1000-200-200
-do
-  for LR in 5e-7 1e-6 1e-5 1e-4 1e-3 1e-2 1e-1
-  do
-    python models/train.py \
-    --input_dir data \
-    --output_dir checkpoints/${HIDDEN_DIMS}/top${TOP_K}/${LR} \
-    --learning_rate ${LR} \
-    --n_epoch 600 \
-    --per_gpu_batch_size 90000 \
-    --num_eval_per_epoch 5 \
-    --weight_decay 1e-5 \
-    --top_k ${TOP_K} \
-    --hidden_dims_list ${HIDDEN_DIMS}
-  done
-done
+#TOP_K=1
+#
+#for HIDDEN_DIMS in 500-100-20 500-100-20-20 5000-1000-200-200
+#do
+#  for LR in 5e-7 1e-6 1e-5 1e-4 1e-3 1e-2 1e-1
+#  do
+#    python models/train.py \
+#    --input_dir data \
+#    --output_dir checkpoints/${HIDDEN_DIMS}/top${TOP_K}/${LR} \
+#    --learning_rate ${LR} \
+#    --n_epoch 600 \
+#    --per_gpu_batch_size 90000 \
+#    --num_eval_per_epoch 5 \
+#    --weight_decay 1e-5 \
+#    --top_k ${TOP_K} \
+#    --hidden_dims_list ${HIDDEN_DIMS}
+#  done
+#done
 
 #rm data/train.pth.tar
 #rm data/dev.pth.tar
+#
+#TOP_K=20
+#LR=5e-7
+#for HIDDEN_DIMS in 5000-100-20-20 5000-1000-20-20 5000-1000-200-20
+#do
+#  python models/train.py \
+#  --input_dir data \
+#  --output_dir checkpoints/${HIDDEN_DIMS}/top${TOP_K}/${LR} \
+#  --learning_rate ${LR} \
+#  --n_epoch 600 \
+#  --per_gpu_batch_size 90000 \
+#  --num_eval_per_epoch 5 \
+#  --weight_decay 1e-5 \
+#  --top_k ${TOP_K} \
+#  --hidden_dims_list ${HIDDEN_DIMS}
+#done
+
+# rm data/train.pth.tar
+# rm data/dev.pth.tar
 
 TOP_K=20
-LR=5e-7
-for HIDDEN_DIMS in 5000-100-20-20 5000-1000-20-20 5000-1000-200-20
+LR=1e-4
+HIDDEN_DIMS=200-100-50-25-20
+
+for LR in 1e-7 1e-6 1e-5 1e-4 1e-3
 do
   python models/train.py \
   --input_dir data \
-  --output_dir checkpoints/${HIDDEN_DIMS}/top${TOP_K}/${LR} \
+  --output_dir checkpoints/normalized-output-${HIDDEN_DIMS}/top${TOP_K}/${LR} \
   --learning_rate ${LR} \
-  --n_epoch 600 \
+  --n_epoch 1200 \
   --per_gpu_batch_size 90000 \
-  --num_eval_per_epoch 5 \
+  --num_eval_per_epoch 2 \
   --weight_decay 1e-5 \
   --top_k ${TOP_K} \
   --hidden_dims_list ${HIDDEN_DIMS}
 done
-
-# rm data/train.pth.tar
-# rm data/dev.pth.tar
