@@ -193,16 +193,22 @@ set -x
 #done
 
 TOP_K=1000
-LR=1e-4
+#LR=1e-4
 HIDDEN_DIMS=200-100-50-25-20
 
-python models/train.py \
---input_dir data/processed/sample \
---output_dir checkpoints/sample-${HIDDEN_DIMS}/top${TOP_K}/${LR} \
---learning_rate ${LR} \
---n_epoch 1200 \
---per_gpu_batch_size 90000 \
---num_eval_per_epoch 2 \
---weight_decay 1e-5 \
---top_k ${TOP_K} \
---hidden_dims_list ${HIDDEN_DIMS}
+
+for LR in 1e-8 1e-7 1e-6 1e-5 1e-3 1e-2
+do
+  python models/train.py \
+  --input_dir data/processed/sample \
+  --output_dir checkpoints/sample-${HIDDEN_DIMS}/top${TOP_K}/${LR} \
+  --learning_rate ${LR} \
+  --n_epoch 1200 \
+  --per_gpu_batch_size 90000 \
+  --num_eval_per_epoch 2 \
+  --weight_decay 1e-5 \
+  --top_k ${TOP_K} \
+  --hidden_dims_list ${HIDDEN_DIMS}
+done
+
+
