@@ -49,7 +49,7 @@ def main():
     df = import_raw_data(args.input_path)
     sampled_train_df, sampled_test_df = downsample_data(df, args.num_rows, args.seed)
     export_processed_data(sampled_train_df, args.output_dir / 'sample' / 'train.csv')
-    export_processed_data(sampled_test_df, args.output_dir / 'sample' / 'test.csv')
+    export_processed_data(sampled_test_df, args.output_dir / 'sample' / 'dev.csv')
     logger.info(f'saved data at {args.output_dir / "sample"}')
 
 
