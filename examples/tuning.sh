@@ -197,11 +197,11 @@ TOP_K=1000
 HIDDEN_DIMS=200-100-50-25-20
 
 
-for LR in 1e-8 1e-7 1e-6 1e-5 1e-3 1e-2
+for LR in 1e-8 1e-7 1e-6 1e-5 1e-4 1e-3 1e-2
 do
   python models/train.py \
   --input_dir data/processed/sample \
-  --output_dir checkpoints/sample-${HIDDEN_DIMS}/top${TOP_K}/${LR} \
+  --output_dir checkpoints/sample/${HIDDEN_DIMS}/top${TOP_K}/${LR} \
   --learning_rate ${LR} \
   --n_epoch 1200 \
   --per_gpu_batch_size 90000 \
