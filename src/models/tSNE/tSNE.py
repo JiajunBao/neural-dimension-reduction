@@ -26,7 +26,7 @@ def main():
 
     input_embeddings = import_raw_data(args.input_path)
 
-    model = TSNE(n_components=args.dim_out, n_iter=args.n_iter, perplexity=40, verbose=2, random_state=args.seed)
+    model = TSNE(n_components=args.dim_out, n_iter=args.n_iter, method='exact', perplexity=40, verbose=2, random_state=args.seed)
     output_embeddings = model.fit_transform(input_embeddings)
     output_embeddings = torch.from_numpy(output_embeddings)
     # evaluation
