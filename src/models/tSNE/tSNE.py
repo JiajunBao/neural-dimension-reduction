@@ -47,7 +47,10 @@ def main():
     torch.save({'output_embeddings': output_embeddings,
                 'input_embeddings': input_embeddings,
                 'p': p, 'q': q, 'scores': scores,
-                'tsne-args': args
+                'tsne-args': args,
+                'ground_min_dist_square': ground_min_dist_square,
+                'anchor_idx': anchor_idx,
+                'topk_dists': topk_dists
                 }, args.output_dir / 'embeddings.pth.tar')
     joblib.dump(model, 'tsne-model.pth.tar')
 
