@@ -1,10 +1,8 @@
 # -*- coding: utf-8 -*-
-import pandas as pd
-import numpy as np
 from argparse import ArgumentParser
 import logging
 from pathlib import Path
-from dotenv import find_dotenv, load_dotenv
+from src.data.utils import import_raw_data, export_processed_data
 
 
 def downsample_data(df, num_rows, seed):
@@ -13,7 +11,13 @@ def downsample_data(df, num_rows, seed):
     return sampled_train_df, sampled_test_df
 
 
-def get_solver_arguments():
+def main():
+    """ Runs data processing scripts to turn raw data from (../raw) into
+        cleaned data ready to be analyzed (saved in ../processed).
+    """
+
+    logger = logging.getLogger(__name__)
+    # get arguments
     parser = ArgumentParser(description='Arguments for dataset processing')
     parser.add_argument('--input_path', type=Path, required=True, default=None,
                         help='the input path to the input data')
@@ -24,27 +28,7 @@ def get_solver_arguments():
     parser.add_argument('--seed', type=int, default=42,
                         help='the random seed of the whole process')
     args = parser.parse_args()
-    return args
 
-
-def import_raw_data(input_path):
-    df = pd.read_csv(input_path, header=None)
-    return df
-
-
-def export_processed_data(processed_df: pd.DataFrame, output_path: Path):
-    output_path.parents[0].mkdir(exist_ok=True, parents=True)
-    processed_df.to_csv(output_path, header=False, index=False)
-    return True
-
-
-def main():
-    """ Runs data processing scripts to turn raw data from (../raw) into
-        cleaned data ready to be analyzed (saved in ../processed).
-    """
-
-    logger = logging.getLogger(__name__)
-    args = get_solver_arguments()
     logger.info(f'reading data from {args.input_path}')
     df = import_raw_data(args.input_path)
     sampled_train_df, sampled_test_df = downsample_data(df, args.num_rows, args.seed)
