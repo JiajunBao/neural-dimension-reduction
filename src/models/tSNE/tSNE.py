@@ -52,7 +52,7 @@ def main():
                 'anchor_idx': anchor_idx,
                 'topk_dists': topk_dists
                 }, args.output_dir / 'embeddings.pth.tar')
-    joblib.dump(model, 'tsne-model.pth.tar')
+    joblib.dump(model, args.output_dir / 'tsne-model.pth.tar')
 
 
 if __name__ == '__main__':
