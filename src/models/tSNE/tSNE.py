@@ -30,6 +30,7 @@ def main():
     output_embeddings = model.fit_transform(input_embeddings)
 
     # evaluation
+    input_embeddings = torch.from_numpy(input_embeddings.to_numpy())
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
     ground_min_dist_square, anchor_idx, topk_dists = nearest_neighbors(x=input_embeddings, top_k=20, device=device)
     q = input_inverse_similarity(input_embeddings, anchor_idx, ground_min_dist_square)

@@ -1,7 +1,8 @@
 
 python src/models/tSNE/tSNE.py \
---input_path data/processed/sample/test.csv \
+--input_path data/processed/sample/dev.csv \
 --output_dir checkpoints/tsne/sample-test-set \
+--dim_out 2 \
 --n_iter 4000
 
 
