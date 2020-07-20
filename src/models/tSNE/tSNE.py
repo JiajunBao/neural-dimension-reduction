@@ -28,7 +28,7 @@ def main():
 
     model = TSNE(n_components=args.dim_out, n_iter=args.n_iter, perplexity=40, verbose=2, random_state=args.seed)
     output_embeddings = model.fit_transform(input_embeddings)
-
+    output_embeddings = torch.from_numpy(output_embeddings)
     # evaluation
     input_embeddings = torch.from_numpy(input_embeddings.to_numpy())
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
