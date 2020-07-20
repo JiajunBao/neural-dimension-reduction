@@ -6,6 +6,7 @@ import torch
 from src.data.utils import import_raw_data
 from src.models.DenseNetwork.loss import nearest_neighbors, input_inverse_similarity, kl_div_add_mse_loss
 from src.models.DenseNetwork.models import Solver
+import os
 
 
 def main():
@@ -23,6 +24,10 @@ def main():
     parser.add_argument('--seed', type=int, default=42,
                         help='the random seed of the whole process')
     args = parser.parse_args()
+
+    if os.path.exists(args.output_dir) and os.listdir(args.output_dir):
+        raise ValueError(f"Output directory ({args.output_dir}) already exists "
+                         "and is not empty")
 
     input_embeddings = import_raw_data(args.input_path)
 
