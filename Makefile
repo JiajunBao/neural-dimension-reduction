@@ -30,7 +30,7 @@ data: requirements
 	$(PYTHON_INTERPRETER) src/data/make_dataset.py data/raw data/processed
 
 sample: data
-	$(PYTHON_INTERPRETER) src/data/make_sample.py --input_path data/interim/artificial3_10_200.csv --output_dir data/processed --num_rows 10000
+	$(PYTHON_INTERPRETER) src/data/make_sample.py --input_path data/interim/artificial3_10_200.csv --output_dir data/processed --num_rows 2000
 
 ## Delete all compiled Python files
 clean:
