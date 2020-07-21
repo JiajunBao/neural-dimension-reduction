@@ -211,7 +211,7 @@ set -x
 #  --hidden_dims_list ${HIDDEN_DIMS}
 #done
 
-TOP_K=1000
+TOP_K=10000
 
 
 for LR in 1e-8 1e-7 1e-6 1e-5 1e-4 1e-3 1e-2
