@@ -236,7 +236,7 @@ set -x
 LR=1e-7
 HIDDEN_DIMS=5000-3000-400-400-400
 
-for TOP_K in {1000..2000}
+for TOP_K in 1998 1996 1994 1992 1990 1988 1986 1984 1982 1980 1978 1976 1974 1972 1970 1968
 do
   python models/train.py \
   --input_dir data/processed/sample \
