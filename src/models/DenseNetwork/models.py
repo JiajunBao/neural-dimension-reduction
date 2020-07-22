@@ -70,6 +70,7 @@ class Net(nn.Module):
         self.hidden_layers = hidden_layers
         self.model_construct_dict = model_construct_dict
         self.add_shortcut = add_shortcut
+        self.shortcut = nn.Identity()
 
     @classmethod
     def from_scratch(cls, dim_in, hidden_dims_list, dim_out, add_shortcut):
@@ -104,7 +105,7 @@ class Net(nn.Module):
         """
         if self.add_shortcut:
             for layer in self.hidden_layers:
-                x = F.relu(layer.forward(x) + nn.Identity(x))
+                x = F.relu(layer.forward(x)) + self.shortcut(x)
         else:
             for layer in self.hidden_layers:
                 x = F.relu(layer.forward(x))
