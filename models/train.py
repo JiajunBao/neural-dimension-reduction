@@ -7,7 +7,7 @@ def train():
     dim_in = 200
     dim_out = 20
     hidden_dims_list = [int(x) for x in args.hidden_dims_list.split('-')]
-    model = Net.from_scratch(dim_in, hidden_dims_list, dim_out)
+    model = Net.from_scratch(dim_in, hidden_dims_list, dim_out, args.shortcut)
     solver = Solver.from_scratch(model,
                                  input_dir=args.input_dir,
                                  output_dir=args.output_dir,
