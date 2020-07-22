@@ -251,10 +251,29 @@ set -x
 #done
 
 
-LR=1e-7
-HIDDEN_DIMS=5000-3000-400-400-400
+#LR=1e-7
+#HIDDEN_DIMS=5000-3000-400-400-400
+#
+#for TOP_K in 1998 1996 1994 1992 1990 1988 1986 1984 1982 1980 1978 1976 1974 1972 1970 1968
+#do
+#  python models/train.py \
+#  --input_dir data/processed/sample \
+#  --output_dir checkpoints/shortcut-sample/"${HIDDEN_DIMS}"/top${TOP_K}/${LR} \
+#  --learning_rate ${LR} \
+#  --n_epoch 1200 \
+#  --per_gpu_batch_size 90000 \
+#  --num_eval_per_epoch 2 \
+#  --weight_decay 1e-5 \
+#  --top_k ${TOP_K} \
+#  --hidden_dims_list "${HIDDEN_DIMS}" \
+#  --add_shortcut True
+#done
 
-for TOP_K in 1998 1996 1994 1992 1990 1988 1986 1984 1982 1980 1978 1976 1974 1972 1970 1968
+
+TOP_K=2000
+LR=5e-7
+
+for HIDDEN_DIMS in 200-100-100-50-50-25-25-20 200-200-100-100-100-50-50-50-25-25-25-20-20 200-200-200-100-100-100-100-50-50-50-50-25-25-25-25-20-20-20 200-200-200-200-100-100-100-100-100-50-50-50-50-50-25-25-25-25-25-20-20-20-20
 do
   python models/train.py \
   --input_dir data/processed/sample \
