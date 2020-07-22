@@ -65,15 +65,14 @@ class VecDataSet(Dataset):
 
 
 class Net(nn.Module):
-    def __init__(self, hidden_layers, model_construct_dict, add_shortcut):
+    def __init__(self, hidden_layers: nn.ModuleList, model_construct_dict: dict, shortcut_layers: nn.ModuleList):
         super(Net, self).__init__()
         self.hidden_layers = hidden_layers
         self.model_construct_dict = model_construct_dict
-        self.add_shortcut = add_shortcut
-        self.shortcut = nn.Identity()
+        self.shortcut_layers = shortcut_layers
 
     @classmethod
-    def from_scratch(cls, dim_in, hidden_dims_list, dim_out, add_shortcut):
+    def from_scratch(cls, dim_in, hidden_dims_list, dim_out, add_shortcut: bool):
         """
         In the constructor we instantiate two nn.Linear modules and assign them as
         member variables.
@@ -87,7 +86,12 @@ class Net(nn.Module):
             'hidden_dims_list': hidden_dims_list,
             'dim_out': dim_out,
         }
-        return cls(hidden_layers, model_construct_dict, add_shortcut)
+        shortcut_layers = None
+        if add_shortcut:
+            shortcut_layers = nn.ModuleList(
+                [nn.Linear(in_features=dimi, out_features=dimo)
+                 for i, (dimi, dimo) in enumerate(zip(in_dims, out_dims)) if i % 4 == 0])
+        return cls(hidden_layers, model_construct_dict, shortcut_layers)
 
     @classmethod
     def from_pretrained(cls, path_to_checkpoints):
@@ -104,8 +108,11 @@ class Net(nn.Module):
         well as arbitrary operators on Tensors.
         """
         if self.add_shortcut:
-            for layer in self.hidden_layers:
-                x = F.relu(layer.forward(x)) + self.shortcut(x)
+            for i, layer in enumerate(self.hidden_layers):
+                if i % 4 == 0:
+                    x = F.relu(layer.forward(x)) + self.shortcut_layers[i // 4](x)
+                else:
+                    x = F.relu(layer.forward(x))
         else:
             for layer in self.hidden_layers:
                 x = F.relu(layer.forward(x))
