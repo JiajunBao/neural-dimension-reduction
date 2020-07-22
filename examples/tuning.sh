@@ -266,5 +266,5 @@ do
   --weight_decay 1e-5 \
   --top_k ${TOP_K} \
   --hidden_dims_list "${HIDDEN_DIMS}" \
-  --shortcut True
+  --add_shortcut True
 done

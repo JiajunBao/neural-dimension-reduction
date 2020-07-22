@@ -523,7 +523,7 @@ class Solver(object):
                             help='the top-k nearest neighbors that are considered.')
         parser.add_argument('--hidden_dims_list', type=str,
                             help='list of hidden dimensions')
-        parser.add_argument('--shortcut', type=bool, default=False,
+        parser.add_argument('--add_shortcut', type=bool, default=False,
                             help='whether to add shortcut connections')
         args = parser.parse_args()
 
