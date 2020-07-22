@@ -65,13 +65,14 @@ class VecDataSet(Dataset):
 
 
 class Net(nn.Module):
-    def __init__(self, hidden_layers, model_construct_dict):
+    def __init__(self, hidden_layers, model_construct_dict, add_shortcut):
         super(Net, self).__init__()
         self.hidden_layers = hidden_layers
         self.model_construct_dict = model_construct_dict
+        self.add_shortcut = add_shortcut
 
     @classmethod
-    def from_scratch(cls, dim_in, hidden_dims_list, dim_out):
+    def from_scratch(cls, dim_in, hidden_dims_list, dim_out, add_shortcut):
         """
         In the constructor we instantiate two nn.Linear modules and assign them as
         member variables.
@@ -85,7 +86,7 @@ class Net(nn.Module):
             'hidden_dims_list': hidden_dims_list,
             'dim_out': dim_out,
         }
-        return cls(hidden_layers, model_construct_dict)
+        return cls(hidden_layers, model_construct_dict, add_shortcut)
 
     @classmethod
     def from_pretrained(cls, path_to_checkpoints):
@@ -101,8 +102,12 @@ class Net(nn.Module):
         a Tensor of output data. We can use Modules defined in the constructor as
         well as arbitrary operators on Tensors.
         """
-        for layer in self.hidden_layers:
-            x = F.relu(layer.forward(x))
+        if self.add_shortcut:
+            for layer in self.hidden_layers:
+                x = F.relu(layer.forward(x) + nn.Identity(x))
+        else:
+            for layer in self.hidden_layers:
+                x = F.relu(layer.forward(x))
         return x
 
 
@@ -510,6 +515,8 @@ class Solver(object):
                             help='the top-k nearest neighbors that are considered.')
         parser.add_argument('--hidden_dims_list', type=str,
                             help='list of hidden dimensions')
+        parser.add_argument('--shortcut', type=bool, default=False,
+                            help='whether to add shortcut connections')
         args = parser.parse_args()
 
         return args
