@@ -107,7 +107,7 @@ class Net(nn.Module):
         a Tensor of output data. We can use Modules defined in the constructor as
         well as arbitrary operators on Tensors.
         """
-        if self.add_shortcut:
+        if self.shortcut_layers:
             for i, layer in enumerate(self.hidden_layers):
                 if i % 4 == 0:
                     x = F.relu(layer.forward(x)) + self.shortcut_layers[i // 4](x)
