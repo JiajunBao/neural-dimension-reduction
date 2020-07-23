@@ -50,12 +50,11 @@ class InsaneTrainer(object):
         # data utilities
         self.train_dataloader = kwargs.pop("train_dataloader", None)
         self.dev_dataloader = kwargs.pop("dev_dataloader", None)
-        if self.train_dataloader is not None:
-            self.train_decoder = StochasticNeighborLoss(self.train_dataloader.dataset.anchor_idx,
-                                                        self.train_dataloader.dataset.input_similarity)
-        if self.dev_decoder is not None:
-            self.dev_decoder = StochasticNeighborLoss(self.dev_dataloader.dataset.anchor_idx,
-                                                      self.dev_dataloader.dataset.input_similarity)
+
+        self.train_decoder = StochasticNeighborLoss(self.train_dataloader.dataset.anchor_idx,
+                                                    self.train_dataloader.dataset.input_similarity)
+        self.dev_decoder = StochasticNeighborLoss(self.dev_dataloader.dataset.anchor_idx,
+                                                  self.dev_dataloader.dataset.input_similarity)
 
         self.batch_size = batch_size
 
