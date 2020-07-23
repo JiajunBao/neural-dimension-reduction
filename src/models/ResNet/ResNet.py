@@ -46,6 +46,44 @@ class ResidualBlock(nn.Module):
         return self.block(x) + self.shortcut(x)
 
 
+class ResidualBottleneckBlock(nn.Module):
+    def __init__(self, cin, cout, downsample=False):
+        super().__init__()
+        if downsample:
+            self.block = nn.Sequential(OrderedDict([
+                ('bn1', nn.BatchNorm1d(cin)),
+                ('relu1', nn.ReLU()),
+                ('conv1', nn.Conv1d(cin, cout // 4, kernel_size=1, stride=2)),
+                ('bn2', nn.BatchNorm1d(cout // 4)),
+                ('relu2', nn.ReLU()),
+                ('conv2', nn.Conv1d(cout // 4, cout // 4, kernel_size=3, stride=1, padding=1)),
+                ('bn3', nn.BatchNorm1d(cout // 4)),
+                ('relu3', nn.ReLU()),
+                ('conv3', nn.Conv1d(cout // 4, cout, kernel_size=1))
+            ]))
+        else:
+            self.block = nn.Sequential(OrderedDict([
+                ('bn1', nn.BatchNorm1d(cin)),
+                ('relu1', nn.ReLU()),
+                ('conv1', nn.Conv1d(cin, cout // 4, kernel_size=1, stride=1)),
+                ('bn2', nn.BatchNorm1d(cout // 4)),
+                ('relu2', nn.ReLU()),
+                ('conv2', nn.Conv1d(cout // 4, cout // 4, kernel_size=3, stride=1, padding=1)),
+                ('bn3', nn.BatchNorm1d(cout // 4)),
+                ('relu3', nn.ReLU()),
+                ('conv3', nn.Conv1d(cout // 4, cout, kernel_size=1))
+            ]))
+
+        if downsample:
+            self.shortcut = nn.Conv1d(in_channels=cin, out_channels=cout, kernel_size=1, stride=2, padding_mode='same')
+        else:
+            self.shortcut = nn.Identity() if cin == cout else nn.Conv1d(in_channels=cin, out_channels=cout,
+                                                                        kernel_size=1, stride=1, padding_mode='same')
+
+    def forward(self, x):
+        return self.block(x) + self.shortcut(x)
+    
+
 class ResNetStage(nn.Module):
     def __init__(self, cin, cout, num_blocks, downsample=True,
                  block=ResidualBlock):
@@ -75,7 +113,14 @@ class ResNetStem(nn.Module):
 class ResNet(nn.Module):
     def __init__(self, stage_args, cin=1, block_name="ResidualBlock", ouput_dimension=20):
         super().__init__()
-        block = PlainBlock if block_name == 'PlainBlock' else ResidualBlock
+        if block_name == 'PlainBlock':
+            block = PlainBlock
+        elif block_name == 'ResidualBlock':
+            block = ResidualBlock
+        elif block_name == 'ResidualBottleneckBlock':
+            block = ResidualBottleneckBlock
+        else:
+            raise NotImplementedError(f'No block module named {block_name}!')
         self.cnn = None
         blocks = [ResNetStem(cin=cin, cout=stage_args[0][0])]
         self.last = stage_args[-1][1]
@@ -89,8 +134,8 @@ class ResNet(nn.Module):
         N, C, H, W = out.shape
         out = nn.AvgPool1d(kernel_size=(H, W)).forward(out)
         out = out.view(-1, self.last)
-        scores = self.fc(out)
-        return scores
+        out = self.fc(out)
+        return out
 
 
 def get_resnet(config):
