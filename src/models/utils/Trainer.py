@@ -326,8 +326,8 @@ class InsaneTrainer(object):
                             help='the input directory to the input data')
         parser.add_argument('--output_dir', type=Path, default=None,
                             help='the output directory for saving the regressor')
-        parser.add_argument('--config_path', type=str,
-                            help='path to the model configuration file')
+        parser.add_argument('--config_name', type=str,
+                            help='name of the model configuration file')
         parser.add_argument('--top_k', type=int, default=20,
                             help='the top-k nearest neighbors that are considered.')
         parser.add_argument('--learning_rate', type=float, default=1e-5,

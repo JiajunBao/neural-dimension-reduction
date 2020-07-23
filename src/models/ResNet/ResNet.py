@@ -73,9 +73,9 @@ class ResNetStem(nn.Module):
 
 
 class ResNet(nn.Module):
-    def __init__(self, stage_args, cin=1, block=ResidualBlock, ouput_dimension=20):
+    def __init__(self, stage_args, cin=1, block_name="ResidualBlock", ouput_dimension=20):
         super().__init__()
-
+        block = PlainBlock if block_name == 'PlainBlock' else ResidualBlock
         self.cnn = None
         blocks = [ResNetStem(cin=cin, cout=stage_args[0][0])]
         self.last = stage_args[-1][1]

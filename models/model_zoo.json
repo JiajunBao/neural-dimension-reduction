@@ -1,0 +1,19 @@
+{
+  "resnet32": {
+    "block_name": "ResidualBlock",
+    "stage_args": [
+      [8, 8, 5, false],
+      [8, 16, 5, true],
+      [16, 32, 5, true]
+    ]
+  },
+  "plain32": {
+    "block": "PlainBlock",
+    "stage_args": [
+      [8, 8, 5, false],
+      [8, 16, 5, true],
+      [16, 32, 5, true]
+    ]
+  }
+
+}
