@@ -92,7 +92,7 @@ class Net(nn.Module):
         block_size = 4
         if add_shortcut:
             tmp = list()
-            for i in range(len(in_dims // block_size)):
+            for i in range(len(in_dims) // block_size):
                 tmp.append(nn.Linear(in_features=in_dims[i * block_size], out_features=out_dims[(i + 1) * block_size - 1]))
             if len(tmp) > 0:
                 shortcut_layers = nn.ModuleList(tmp)
