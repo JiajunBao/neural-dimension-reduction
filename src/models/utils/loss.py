@@ -21,5 +21,6 @@ class StochasticNeighborLoss:
         yi = output_embedding
         output_similarity = euclidean_softmax_similarity(yi, yj)
         loss = kl_div_loss(self.input_similarity.to(output_similarity), output_similarity)
+        print(loss)
         return loss, output_similarity
 
