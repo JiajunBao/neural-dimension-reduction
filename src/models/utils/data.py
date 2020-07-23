@@ -1,7 +1,7 @@
 import torch
 from torch.utils.data import Dataset
 import pandas as pd
-from src.models.utils import precomputing
+from src.models.utils.distance import precomputing
 
 
 class InsaneDataSet(Dataset):
