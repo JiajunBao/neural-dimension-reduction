@@ -132,8 +132,8 @@ class ResNet(nn.Module):
     def forward(self, x):
         out = x.unsqueeze(dim=1)
         out = self.cnn(out)
-        N, C, H, W = out.shape
-        out = nn.AvgPool1d(kernel_size=(H, W)).forward(out)
+        N, C, L = out.shape
+        out = nn.AvgPool1d(kernel_size=L).forward(out)
         out = out.view(-1, self.last)
         out = self.fc(out)
         return out
