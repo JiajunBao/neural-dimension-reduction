@@ -9,7 +9,8 @@ from runx.logx import logx
 from torch.utils.data import DataLoader
 from tqdm.auto import tqdm
 
-from src.models.utils.loss import StochasticNeighborLoss, nearest_neighbors
+from src.models.utils.loss import StochasticNeighborLoss
+from src.models.utils.distance import nearest_neighbors
 from src.models.utils.data import InsaneDataSet
 
 
