@@ -1,7 +1,6 @@
 """Inductive Stochastic Neighbor Embedding"""
 from torch.nn import Module
 
-from src.models.utils.loss import StochasticNeighborLoss
 from src.models.ResNet.ResNet import get_resnet
 
 

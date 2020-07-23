@@ -4,7 +4,7 @@ from src.models.utils import precomputing
 from src.models.utils.distance import nearest_neighbors, euclidean_softmax_similarity, kl_div_loss
 
 
-class StochasticNeighborLoss(Module):
+class StochasticNeighborLoss:
     def __init__(self, anchor_idx, input_similarity):
         super(StochasticNeighborLoss, self).__init__()
         self.anchor_idx = anchor_idx

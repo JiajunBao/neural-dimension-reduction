@@ -9,7 +9,8 @@ from runx.logx import logx
 from torch.utils.data import DataLoader
 from tqdm.auto import tqdm
 
-from src.models.utils.loss import euclidean_softmax_similarity, kl_div_loss, nearest_neighbors
+from src.models.utils.loss import StochasticNeighborLoss, nearest_neighbors
+from src.models.utils.data import InsaneDataSet
 
 
 class InsaneTrainer(object):
@@ -42,10 +43,19 @@ class InsaneTrainer(object):
         self.top_k = top_k
         # training utilities
         self.model = model
+        self.train_decoder = None
+        self.dev_decoder = None
 
         # data utilities
         self.train_dataloader = kwargs.pop("train_dataloader", None)
         self.dev_dataloader = kwargs.pop("dev_dataloader", None)
+        if self.train_dataloader is not None:
+            self.train_decoder = StochasticNeighborLoss(self.train_dataloader.dataset.anchor_idx,
+                                                        self.train_dataloader.dataset.input_similarity)
+        if self.dev_decoder is not None:
+            self.dev_decoder = StochasticNeighborLoss(self.dev_dataloader.anchor_idx,
+                                                      self.dev_dataloader.input_similarity)
+
         self.batch_size = batch_size
 
         self.n_epoch = n_epoch
@@ -54,7 +64,6 @@ class InsaneTrainer(object):
         self.device = device
         self.n_gpu = n_gpu
         logx.msg(f'Number of GPU: {self.n_gpu}.')
-
 
         # optimizer and scheduler
         if self.train_dataloader:
@@ -123,56 +132,64 @@ class InsaneTrainer(object):
 
     def validate(self, dataloader):
         outputs = self.__forward_batch_plus(dataloader)
-        metrics_scores, p = self.get_scores(q=dataloader.dataset.q,
-                                            output_embeddings=outputs,
-                                            anchor_idx=dataloader.dataset.anchor_idx,
-                                            ground_min_dist_square=dataloader.dataset.ground_min_dist_square)
-        return outputs, metrics_scores, p
+        metrics_scores, output_similarity = self.get_scores(self.dev_decoder, outputs, self.dev_dataloader.anchor_idx)
+        return outputs, metrics_scores, output_similarity
 
     def __train_per_epoch(self, epoch_idx, steps_per_eval):
         # with tqdm(total=len(self.train_dataloader), desc=f"Epoch {epoch_idx}") as pbar:
         for batch_idx, batch in enumerate(self.train_dataloader):
             # assume that the whole input matrix fits the GPU memory
             global_step = epoch_idx * len(self.train_dataloader) + batch_idx
-            training_set_loss, training_set_outputs, training_set_p = self.__training_step(batch)
+            training_set_loss, training_set_outputs, training_set_output_similarity = self.__training_step(batch)
             if batch_idx + 1 == len(self.train_dataloader):
                 # validate and save checkpoints
-                developing_set_outputs, developing_set_metrics_scores, developing_set_p = \
+                developing_set_outputs, developing_set_metrics_scores, developing_set_output_similarity = \
                     self.validate(self.dev_dataloader)
                 # TODO: this part can be optimized to batchwise computing
                 if self.record_training_loss_per_epoch:
-                    training_set_metrics_scores, training_set_p = \
-                        self.get_scores(q=self.train_dataloader.dataset.q,
-                                        output_embeddings=training_set_outputs,
-                                        anchor_idx=self.train_dataloader.dataset.anchor_idx,
-                                        ground_min_dist_square=self.train_dataloader.dataset.ground_min_dist_square)
-                    training_set_metrics_scores['train_p'] = training_set_p.cpu(),
+                    training_set_metrics_scores, _ = \
+                        self.get_scores(self.train_decoder,
+                                        training_set_outputs,
+                                        self.train_dataloader.dataset.anchor_idx)
                 else:
                     training_set_metrics_scores = dict()
-                training_set_metrics_scores['tr_loss'] = training_set_loss.item()
+                training_set_metrics_scores['loss'] = training_set_loss.item()
                 if self.scheduler:
                     training_set_metrics_scores['learning_rate'] = self.scheduler.get_last_lr()[0]
                 logx.metric('train', training_set_metrics_scores, global_step)
                 logx.metric('val', developing_set_metrics_scores, global_step)
                 if self.n_gpu > 1:
-                    save_dict = {"model_construct_dict": self.model.model_construct_dict,
+                    save_dict = {"model_construct_dict": self.model.module.config,
                                  "model_state_dict": self.model.module.state_dict(),
                                  "solver_construct_params_dict": self.construct_param_dict,
-                                 "optimizer": self.optimizer.state_dict(),}
+                                 "optimizer": self.optimizer.state_dict(),
+                                 "train_scores": training_set_metrics_scores,
+                                 "train_input_embedding": self.train_dataloader.dataset.x,
+                                 "train_input_similarity": self.train_dataloader.dataset.input_similarity,
+                                 "train_output_embedding": training_set_outputs,
+                                 "train_output_similarity": training_set_output_similarity,
+                                 "dev_scores": developing_set_metrics_scores,
+                                 "dev_input_embeddings": self.dev_dataloader.dataset.x,
+                                 "dev_input_similarity": self.dev_dataloader.dataset.input_similarity,
+                                 "dev_output_embedding": developing_set_outputs,
+                                 "dev_output_similarity": developing_set_output_similarity,
+                                 }
                 else:
-                    save_dict = {"model_construct_dict": self.model.model_construct_dict,
+                    save_dict = {"model_construct_dict": self.model.config,
                                  "model_state_dict": self.model.state_dict(),
                                  "solver_construct_params_dict": self.construct_param_dict,
                                  "optimizer": self.optimizer.state_dict(),
-                                 "train_metrics_scores": training_set_metrics_scores,
-                                 "train_output_embeddings": training_set_outputs.cpu(),
-                                 "train_q": self.train_dataloader.dataset.q.cpu(),
-                                 "train_anchor_idx": self.train_dataloader.dataset.anchor_idx.cpu(),
-                                 "dev_metrics_scores": developing_set_metrics_scores,
-                                 "dev_output_embeddings": developing_set_outputs.cpu(),
-                                 "dev_q": self.dev_dataloader.dataset.q.cpu(),
-                                 "dev_p": developing_set_p.cpu(),
-                                 "dev_anchor_idx": self.dev_dataloader.dataset.anchor_idx.cpu()}
+                                 "train_scores": training_set_metrics_scores,
+                                 "train_input_embedding": self.train_dataloader.dataset.x,
+                                 "train_input_similarity": self.train_dataloader.dataset.input_similarity,
+                                 "train_output_embedding": training_set_outputs,
+                                 "train_output_similarity": training_set_output_similarity,
+                                 "dev_scores": developing_set_metrics_scores,
+                                 "dev_input_embeddings": self.dev_dataloader.dataset.x,
+                                 "dev_input_similarity": self.dev_dataloader.dataset.input_similarity,
+                                 "dev_output_embedding": developing_set_outputs,
+                                 "dev_output_similarity": developing_set_output_similarity,
+                                 }
                 logx.save_model(save_dict,
                                 metric=developing_set_metrics_scores['Recall@1'],
                                 epoch=global_step,
@@ -192,14 +209,8 @@ class InsaneTrainer(object):
         self.model.zero_grad()  # reset gradient
         self.model.train()
         outputs = self.__forwarding_step(batch)
-        p = input_inverse_similarity(x=outputs.to(self.device),
-                                     anchor_idx=self.train_dataloader.dataset.anchor_idx.to(self.device),
-                                     min_dist_square_root=self.train_dataloader.dataset.ground_min_dist_square.to(self.device),
-                                     approximate_min_dist=False).cpu()
-        # p = output_inverse_similarity(y=outputs.to(self.device),
-        #                               anchor_idx=self.train_dataloader.dataset.anchor_idx.to(self.device)).cpu()
-        loss = self.criterion(p.to(self.device),
-                              self.train_dataloader.dataset.q.to(self.device), lam=1)
+
+        loss, output_similarity = self.train_decoder.forward(outputs)
         if self.n_gpu > 1:
             loss = loss.mean()  # mean() to average on multi-gpu.
         loss.backward()
@@ -207,7 +218,7 @@ class InsaneTrainer(object):
         # update weights
         self.optimizer.step()
         # self.scheduler.step()  # Update learning rate schedule
-        return loss.cpu().detach(), outputs.cpu().detach(), p.cpu().detach()
+        return loss.cpu().detach(), outputs.cpu().detach(), output_similarity.cpu().detach()
 
     def __forwarding_step(self, batch):
         """
@@ -231,8 +242,9 @@ class InsaneTrainer(object):
 
     def get_scores(self, decoder, output_embedding, anchor_idx):
         scores = dict()
-        loss, output_similarity = decoder.forward(output_embedding)
-        scores['loss'] = loss.cpu().detach().item()
+        loss, output_similarity = decoder.forward(output_embedding.to(self.device))
+        loss, output_similarity = loss.cpu(), output_similarity.cpu()
+        scores['loss'] = loss.item()
         _, topk_neighbors, _ = nearest_neighbors(x=output_embedding, top_k=anchor_idx.shape[1], device=self.device)
         ground_nn = anchor_idx[:, 0].unsqueeze(dim=1)
         for r in [1, 5, 10, 20]:
@@ -281,7 +293,7 @@ class InsaneTrainer(object):
                 return DataLoader(dataset, shuffle=False, batch_size=batch_size, pin_memory=True)
             else:
                 print(f'inconsistent top_k: {dataset.top_k} vs {top_k}')
-        dataset = VecDataSet.from_df(input_dir / f'{split_name}.csv', max(top_k, 20))
+        dataset = InsaneDataSet.from_df(input_dir / f'{split_name}.csv', max(top_k, 20))
         torch.save(dataset, encoded_data_path)
         print(f'construct dataset from dataframe and save dataset at ({encoded_data_path})')
         return DataLoader(dataset, shuffle=False, batch_size=batch_size, pin_memory=True)
