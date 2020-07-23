@@ -55,7 +55,7 @@ def euclidean_softmax_similarity(vec_i, vec_j, ground_min_dist_square_i, two_eps
     """
 
     din = (vec_i.unsqueeze(dim=1) - vec_j).square().sum(dim=2)  # (n, m)
-    din = din / ground_min_dist_square_i.view(-1, 1)
+    din = din / (ground_min_dist_square_i + 1e-8).view(-1, 1)
     sim_j_given_i = F.softmin(din ** 2 / two_eps_square, dim=1)  # (n, m)
     print('din', din)
     print('sim_j_given_i', sim_j_given_i)
