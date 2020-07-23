@@ -2,6 +2,9 @@ LR=1e-3
 MODEL_NAME=resnet32
 TOP_K=2000
 
+rm data/processed/sample/train.insane.pth.tar
+rm data/processed/sample/dev.insane.pth.tar
+
 python examples/train_resnet.py \
 --input_dir data/processed/sample \
 --output_dir checkpoints/sample/"${MODEL_NAME}"/top${TOP_K}/${LR} \
