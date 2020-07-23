@@ -35,12 +35,12 @@ class ResidualBlock(nn.Module):
         super().__init__()
         self.block = PlainBlock(cin=cin, cout=cout, downsample=downsample)
         if downsample:
-            self.shortcut = nn.Conv1d(in_channels=cin, out_channels=cout, kernel_size=1, stride=2, padding_mode='same')
+            self.shortcut = nn.Conv1d(in_channels=cin, out_channels=cout, kernel_size=1, stride=2, padding_mode='zeros')
         else:
             if cin == cout:
                 self.shortcut = nn.Identity()
             else:
-                nn.Conv1d(in_channels=cin, out_channels=cout, kernel_size=1, stride=1, padding_mode='same')
+                nn.Conv1d(in_channels=cin, out_channels=cout, kernel_size=1, stride=1, padding_mode='zeros')
 
     def forward(self, x):
         return self.block(x) + self.shortcut(x)
@@ -75,10 +75,10 @@ class ResidualBottleneckBlock(nn.Module):
             ]))
 
         if downsample:
-            self.shortcut = nn.Conv1d(in_channels=cin, out_channels=cout, kernel_size=1, stride=2, padding_mode='same')
+            self.shortcut = nn.Conv1d(in_channels=cin, out_channels=cout, kernel_size=1, stride=2, padding_mode='zeros')
         else:
             self.shortcut = nn.Identity() if cin == cout else nn.Conv1d(in_channels=cin, out_channels=cout,
-                                                                        kernel_size=1, stride=1, padding_mode='same')
+                                                                        kernel_size=1, stride=1, padding_mode='zeros')
 
     def forward(self, x):
         return self.block(x) + self.shortcut(x)
