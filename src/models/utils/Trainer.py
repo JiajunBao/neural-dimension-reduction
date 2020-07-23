@@ -136,6 +136,7 @@ class InsaneTrainer(object):
     def __train_per_epoch(self, epoch_idx, steps_per_eval):
         # with tqdm(total=len(self.train_dataloader), desc=f"Epoch {epoch_idx}") as pbar:
         for batch_idx, batch in enumerate(self.train_dataloader):
+            print('dataloader', self.train_dataloader)
             # assume that the whole input matrix fits the GPU memory
             global_step = epoch_idx * len(self.train_dataloader) + batch_idx
             training_set_loss, training_set_outputs, training_set_output_similarity = self.__training_step(batch)
