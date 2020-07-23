@@ -136,6 +136,7 @@ class ResNet(nn.Module):
         out = nn.AvgPool1d(kernel_size=L).forward(out)
         out = out.view(-1, self.last)
         out = self.fc(out)
+        print(out)
         return out
 
 
