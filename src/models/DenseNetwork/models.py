@@ -65,11 +65,13 @@ class VecDataSet(Dataset):
 
 
 class Net(nn.Module):
-    def __init__(self, hidden_layers: nn.ModuleList, model_construct_dict: dict, shortcut_layers: nn.ModuleList):
+    def __init__(self, hidden_layers: nn.ModuleList, model_construct_dict: dict,
+                 shortcut_layers: nn.ModuleList, block_size: int):
         super(Net, self).__init__()
         self.hidden_layers = hidden_layers
         self.model_construct_dict = model_construct_dict
         self.shortcut_layers = shortcut_layers
+        self.block_size = block_size
 
     @classmethod
     def from_scratch(cls, dim_in, hidden_dims_list, dim_out, add_shortcut: bool):
@@ -87,11 +89,14 @@ class Net(nn.Module):
             'dim_out': dim_out,
         }
         shortcut_layers = None
+        block_size = 4
         if add_shortcut:
-            shortcut_layers = nn.ModuleList(
-                [nn.Linear(in_features=dimi, out_features=dimo)
-                 for i, (dimi, dimo) in enumerate(zip(in_dims, out_dims)) if i % 4 == 0])
-        return cls(hidden_layers, model_construct_dict, shortcut_layers)
+            tmp = list()
+            for i in range(len(in_dims // block_size)):
+                tmp.append(nn.Linear(in_features=in_dims[i * block_size], out_features=out_dims[(i + 1) * block_size - 1]))
+            if len(tmp) > 0:
+                shortcut_layers = nn.ModuleList(tmp)
+        return cls(hidden_layers, model_construct_dict, shortcut_layers, block_size)
 
     @classmethod
     def from_pretrained(cls, path_to_checkpoints):
@@ -107,16 +112,18 @@ class Net(nn.Module):
         a Tensor of output data. We can use Modules defined in the constructor as
         well as arbitrary operators on Tensors.
         """
-        if self.shortcut_layers:
-            for i, layer in enumerate(self.hidden_layers):
-                if i % 4 == 0:
-                    x = F.relu(layer.forward(x)) + self.shortcut_layers[i // 4](x)
-                else:
-                    x = F.relu(layer.forward(x))
-        else:
+        out = x
+        if self.shortcut_layers is None:
             for layer in self.hidden_layers:
-                x = F.relu(layer.forward(x))
-        return x
+                out = F.relu(layer.forward(out))
+        else:
+            block_out = x
+            for block_idx in range(len(self.hidden_layers) // self.block_size):
+                for layer_idx in range(block_idx * self.block_size, (block_idx + 1) * self.block_size):
+                    out = self.hidden_layers[layer_idx].forward(out)
+                out = out + self.shortcut_layers[block_idx].forward(block_out)
+                block_out = out
+        return out
 
 
 class Solver(object):
@@ -334,12 +341,12 @@ class Solver(object):
         self.model.zero_grad()  # reset gradient
         self.model.train()
         outputs = self.__forwarding_step(batch)
-        p = input_inverse_similarity(x=outputs.to(self.device),
-                                     anchor_idx=self.train_dataloader.dataset.anchor_idx.to(self.device),
-                                     min_dist_square=self.train_dataloader.dataset.ground_min_dist_square.to(self.device),
-                                     approximate_min_dist=False).cpu()
-        # p = output_inverse_similarity(y=outputs.to(self.device),
-        #                               anchor_idx=self.train_dataloader.dataset.anchor_idx.to(self.device)).cpu()
+        # p = input_inverse_similarity(x=outputs.to(self.device),
+        #                              anchor_idx=self.train_dataloader.dataset.anchor_idx.to(self.device),
+        #                              min_dist_square=self.train_dataloader.dataset.ground_min_dist_square.to(self.device),
+        #                              approximate_min_dist=False).cpu()
+        p = output_inverse_similarity(y=outputs.to(self.device),
+                                      anchor_idx=self.train_dataloader.dataset.anchor_idx.to(self.device)).cpu()
         loss = self.criterion(p.to(self.device),
                               self.train_dataloader.dataset.q.to(self.device), lam=1)
         if self.n_gpu > 1:
@@ -385,13 +392,13 @@ class Solver(object):
         """
         scores = dict()
         # calculate loss
-        p = input_inverse_similarity(x=output_embeddings.to(device),
-                                     anchor_idx=anchor_idx,
-                                     min_dist_square=ground_min_dist_square.to(device),
-                                     approximate_min_dist=False).cpu()
+        # p = input_inverse_similarity(x=output_embeddings.to(device),
+        #                              anchor_idx=anchor_idx,
+        #                              min_dist_square=ground_min_dist_square.to(device),
+        #                              approximate_min_dist=False).cpu()
 
-        # p = output_inverse_similarity(y=output_embeddings.to(device),
-        #                               anchor_idx=anchor_idx).cpu()
+        p = output_inverse_similarity(y=output_embeddings.to(device),
+                                      anchor_idx=anchor_idx).cpu()
         scores['loss'] = criterion(p.to(device), q.to(device), lam=1).cpu().detach().item()
         # recalls
         _, topk_neighbors, _ = nearest_neighbors(x=output_embeddings, top_k=max(20, top_k), device=device)
