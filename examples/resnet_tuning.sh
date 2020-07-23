@@ -2,7 +2,7 @@ LR=1e-3
 MODEL_NAME=resnet32
 TOP_K=2000
 
-python models/train_resnet.py \
+python examples/train_resnet.py \
 --input_dir data/processed/sample \
 --output_dir checkpoints/sample/"${MODEL_NAME}"/top${TOP_K}/${LR} \
 --learning_rate ${LR} \
