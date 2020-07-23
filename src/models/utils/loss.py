@@ -2,10 +2,11 @@ from src.models.utils.distance import precomputing, euclidean_softmax_similarity
 
 
 class StochasticNeighborLoss:
-    def __init__(self, anchor_idx, input_similarity):
+    def __init__(self, anchor_idx, input_similarity, ground_min_dist_square):
         super(StochasticNeighborLoss, self).__init__()
         self.anchor_idx = anchor_idx
         self.input_similarity = input_similarity
+        self.ground_min_dist_square = ground_min_dist_square
 
     @classmethod
     def from_scratch(cls, x, top_k, device):
@@ -13,13 +14,13 @@ class StochasticNeighborLoss:
         In the constructor we instantiate two nn.Linear modules and assign them as
         member variables.
         """
-        anchor_idx, input_similarity, _, _ = precomputing(x, top_k, device)
-        return cls(anchor_idx, input_similarity)
+        anchor_idx, input_similarity, ground_min_dist_square, _ = precomputing(x, top_k, device)
+        return cls(anchor_idx, input_similarity, ground_min_dist_square)
 
     def forward(self, output_embedding):
         yj = output_embedding[self.anchor_idx, :]  # (n, m, d)
         yi = output_embedding
-        output_similarity = euclidean_softmax_similarity(yi, yj)
+        output_similarity = euclidean_softmax_similarity(yi, yj, self.ground_min_dist_square)
         loss = kl_div_loss(self.input_similarity.to(output_similarity), output_similarity)
         print(loss)
         return loss, output_similarity

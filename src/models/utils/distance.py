@@ -41,7 +41,7 @@ def nearest_neighbors(x, top_k, device):
     return ground_min_dist_square.cpu(), topk_neighbors.cpu(), topk_dists.cpu()
 
 
-def euclidean_softmax_similarity(vec_i, vec_j, two_eps_square=1):
+def euclidean_softmax_similarity(vec_i, vec_j, ground_min_dist_square_i, two_eps_square=1):
     """
     calculate inverse similarity for inputs:
         1 / ((d_{in}(x_i, x_j))^2 / d_i^2 + eps)
@@ -50,10 +50,12 @@ def euclidean_softmax_similarity(vec_i, vec_j, two_eps_square=1):
     :param vec_j: torch.tensor of the shape (n, m)
                 xj
     :param two_eps_square: 2 * (epsilon)^2
+    :param ground_min_dist_square_i:
     :return: q: qij in formula (P20-3) torch.tensor of the shape (n, m)
     """
 
     din = (vec_i.unsqueeze(dim=1) - vec_j).square().sum(dim=2)  # (n, m)
+    din = din / ground_min_dist_square_i.view(-1, 1)
     sim_j_given_i = F.softmin(din ** 2 / two_eps_square, dim=1)  # (n, m)
     print('din', din)
     print('sim_j_given_i', sim_j_given_i)
@@ -83,5 +85,5 @@ def precomputing(x, top_k, device):
 
     xi = x
     xj = x[anchor_idx, :]
-    input_similarity = euclidean_softmax_similarity(xi, xj)
+    input_similarity = euclidean_softmax_similarity(xi, xj, ground_min_dist_square)
     return anchor_idx, input_similarity, ground_min_dist_square, topk_dists
