@@ -3,7 +3,7 @@ LR=1e-3
 
 for HIDDEN_DIMS in resnet32 resnet47
 do
-  python examples/train.py \
+  python examples/train_resnet.py \
   --input_dir data/processed/sample \
   --output_dir checkpoints/sample/"${HIDDEN_DIMS}"/top${TOP_K}/${LR} \
   --learning_rate ${LR} \
