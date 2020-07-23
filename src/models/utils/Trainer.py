@@ -54,8 +54,8 @@ class InsaneTrainer(object):
             self.train_decoder = StochasticNeighborLoss(self.train_dataloader.dataset.anchor_idx,
                                                         self.train_dataloader.dataset.input_similarity)
         if self.dev_decoder is not None:
-            self.dev_decoder = StochasticNeighborLoss(self.dev_dataloader.anchor_idx,
-                                                      self.dev_dataloader.input_similarity)
+            self.dev_decoder = StochasticNeighborLoss(self.dev_dataloader.dataset.anchor_idx,
+                                                      self.dev_dataloader.dataset.input_similarity)
 
         self.batch_size = batch_size
 
@@ -131,7 +131,7 @@ class InsaneTrainer(object):
 
     def validate(self, dataloader):
         outputs = self.__forward_batch_plus(dataloader)
-        metrics_scores, output_similarity = self.get_scores(self.dev_decoder, outputs, self.dev_dataloader.anchor_idx)
+        metrics_scores, output_similarity = self.get_scores(self.dev_decoder, outputs, self.dev_dataloader.dataset.anchor_idx)
         return outputs, metrics_scores, output_similarity
 
     def __train_per_epoch(self, epoch_idx, steps_per_eval):
