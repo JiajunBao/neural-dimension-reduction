@@ -8,7 +8,7 @@ class InsaneDataSet(Dataset):
     def __init__(self, x, top_k):
         device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
         # device = 'cpu'
-        self.anchor_idx, self.q, self.ground_min_dist_square, self.topk_dists = \
+        self.anchor_idx, self.input_similarity, self.ground_min_dist_square, self.topk_dists = \
             precomputing(x, top_k=top_k, device=device)
         self.top_k = top_k
         self.x = x.cpu()
