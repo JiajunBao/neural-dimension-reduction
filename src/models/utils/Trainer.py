@@ -69,9 +69,7 @@ class InsaneTrainer(object):
         if self.train_dataloader:
             self.optimizer, self.scheduler = self.get_optimizer(named_parameters=self.model.named_parameters(),
                                                                 learning_rate=learning_rate,
-                                                                weight_decay=weight_decay,
-                                                                train_dataloader=self.train_dataloader,
-                                                                n_epoch=n_epoch)
+                                                                weight_decay=weight_decay)
         # set up random seeds and model location
         self.setup()
 
@@ -298,22 +296,13 @@ class InsaneTrainer(object):
         print(f'construct dataset from dataframe and save dataset at ({encoded_data_path})')
         return DataLoader(dataset, shuffle=False, batch_size=batch_size, pin_memory=True)
 
-    # def infer(self, data_path):
-    #     data_path = Path(data_path)
-    #     dataset = cls.__set_dataset(data_, 'test', batch_size)
-    #     dataloader = DataLoader(dataset, shuffle=False, batch_size=self.batch_size)
-    #     preds, golds = self.__forward_batch_plus(dataloader, verbose=True)
-    #     return preds, golds
-
     @staticmethod
-    def get_optimizer(named_parameters, learning_rate, weight_decay, train_dataloader, n_epoch):
+    def get_optimizer(named_parameters, learning_rate, weight_decay):
         """
         get the optimizer and the learning rate scheduler
         :param named_parameters:
         :param learning_rate:
         :param weight_decay:
-        :param train_dataloader:
-        :param n_epoch:
         :return:
         """
         # Prepare optimizer and schedule (linear warm-up and decay)
@@ -325,28 +314,22 @@ class InsaneTrainer(object):
                 nd in n for nd in no_decay) and p.requires_grad], 'weight_decay': 0.0}
         ]
 
-        optimizer = torch.optim.AdamW(params=optimizer_grouped_parameters, lr=learning_rate, weight_decay=weight_decay)
-        '''
-        # get a linear scheduler
-        num_steps_epoch = len(train_dataloader)
-        ReduceLROnPlateau(self.optimizer, 'min')
-        num_train_optimization_steps = int(num_steps_epoch * n_epoch) + 1
-        warmup_steps = 100
-        scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=warmup_steps,
-                                                    num_training_steps=num_train_optimization_steps)
-        '''
+        optimizer = torch.optim.AdamW(params=optimizer_grouped_parameters,
+                                      lr=learning_rate, weight_decay=weight_decay)
         return optimizer, None
 
     @staticmethod
     def get_solver_arguments():
         parser = argparse.ArgumentParser(description='Arguments for Eigenmetric Regression')
-        # model parameters
-
-        # solver parameters
+        # parameters
         parser.add_argument('--input_dir', type=Path, default=None,
                             help='the input directory to the input data')
         parser.add_argument('--output_dir', type=Path, default=None,
                             help='the output directory for saving the regressor')
+        parser.add_argument('--config_path', type=str,
+                            help='path to the model configuration file')
+        parser.add_argument('--top_k', type=int, default=20,
+                            help='the top-k nearest neighbors that are considered.')
         parser.add_argument('--learning_rate', type=float, default=1e-5,
                             help='learning rate for training')
         parser.add_argument('--n_epoch', type=int, default=3,
@@ -359,12 +342,6 @@ class InsaneTrainer(object):
                             help='weight_decay for the optimizer (l2 regularization)')
         parser.add_argument('--seed', type=int, default=42,
                             help='the random seed of the whole process')
-        parser.add_argument('--top_k', type=int, default=20,
-                            help='the top-k nearest neighbors that are considered.')
-        parser.add_argument('--hidden_dims_list', type=str,
-                            help='list of hidden dimensions')
-        parser.add_argument('--add_shortcut', type=bool, default=False,
-                            help='whether to add shortcut connections')
         args = parser.parse_args()
 
         return args
