@@ -9,6 +9,8 @@ from runx.logx import logx
 from torch.utils.data import DataLoader
 from tqdm.auto import tqdm
 
+from src.models.utils.loss import euclidean_softmax_similarity, kl_div_loss, nearest_neighbors
+
 
 class InsaneTrainer(object):
 
@@ -227,37 +229,17 @@ class InsaneTrainer(object):
         outputs = self.model(batch_inputs)
         return outputs.cpu()
 
-    @staticmethod
-    def static_get_scores(q, output_embeddings, anchor_idx, device, criterion, top_k, ground_min_dist_square):
-        """
-        :param q: torch.tensor (n, ) input similarity
-        :param output_embeddings: torch.tensor (n, d2) output embeddings from the network
-        :param anchor_idx: (n, m) each point has m points as anchors
-        :param device: device for computation
-        :param criterion: evaluation criterion
-        :param top_k: the top-k considered
-        :return:
-        """
+    def get_scores(self, decoder, output_embedding, anchor_idx):
         scores = dict()
-        # calculate loss
-        p = input_inverse_similarity(x=output_embeddings.to(device),
-                                     anchor_idx=anchor_idx,
-                                     min_dist_square_root=ground_min_dist_square.to(device),
-                                     approximate_min_dist=False).cpu()
-
-        scores['loss'] = criterion(p.to(device), q.to(device), lam=1).cpu().detach().item()
-        # recalls
-        _, topk_neighbors, _ = nearest_neighbors(x=output_embeddings, top_k=max(20, top_k), device=device)
+        loss, output_similarity = decoder.forward(output_embedding)
+        scores['loss'] = loss.cpu().detach().item()
+        _, topk_neighbors, _ = nearest_neighbors(x=output_embedding, top_k=anchor_idx.shape[1], device=self.device)
         ground_nn = anchor_idx[:, 0].unsqueeze(dim=1)
         for r in [1, 5, 10, 20]:
             top_predictions = topk_neighbors[:, :r]  # (n, r)
             scores[f'Recall@{r}'] = \
                 torch.sum(top_predictions == ground_nn, dtype=torch.float).item() / ground_nn.shape[0]
-        return scores, p
-
-    def get_scores(self, input_similarity, output_embedding, anchor_idx):
-
-
+        return scores, output_similarity
 
     def __forward_batch_plus(self, dataloader, verbose=False):
         preds_list = list()

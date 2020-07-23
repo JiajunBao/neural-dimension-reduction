@@ -1,5 +1,6 @@
 from torch.nn import Module
 
+from src.models.utils import precomputing
 from src.models.utils.distance import nearest_neighbors, euclidean_softmax_similarity, kl_div_loss
 
 
