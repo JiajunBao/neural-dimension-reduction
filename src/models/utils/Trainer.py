@@ -283,7 +283,7 @@ class InsaneTrainer(object):
 
     @classmethod
     def __set_dataset(cls, input_dir, split_name, batch_size, top_k):
-        encoded_data_path = input_dir / f'{split_name}.pth.tar'
+        encoded_data_path = input_dir / f'{split_name}.insane.pth.tar'
         if encoded_data_path.is_file():
             dataset = torch.load(encoded_data_path)
             print(f'load dataset from {encoded_data_path}')
