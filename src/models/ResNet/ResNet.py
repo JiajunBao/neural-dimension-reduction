@@ -121,6 +121,7 @@ class ResNet(nn.Module):
             block = ResidualBottleneckBlock
         else:
             raise NotImplementedError(f'No block module named {block_name}!')
+        self.model_construct_dict = stage_args
         self.cnn = None
         blocks = [ResNetStem(cin=cin, cout=stage_args[0][0])]
         self.last = stage_args[-1][1]
