@@ -20,8 +20,8 @@ class StochasticNeighborLoss:
     def forward(self, output_embedding):
         yj = output_embedding[self.anchor_idx, :]  # (n, m, d)
         yi = output_embedding
-        output_similarity = euclidean_softmax_similarity(yi, yj, self.ground_min_dist_square)
-        loss = kl_div_loss(self.input_similarity.to(output_similarity), output_similarity)
+        output_similarity = euclidean_softmax_similarity(yi, yj, self.ground_min_dist_square.to(output_embedding))
+        loss = kl_div_loss(self.input_similarity.to(output_embedding), output_similarity)
         print(loss)
         return loss, output_similarity
 
