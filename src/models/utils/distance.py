@@ -14,21 +14,21 @@ def nearest_neighbors(x, top_k, device):
             topk_neighbors: torch.tensor (n, top_k) the index of the top-k nearest neighbors;
     """
     batch_size = 2000
-    x = x.to(device)
-    if x.shape[0] * x.shape[1] < batch_size * 200:  # direct computes the whole matrix
-        dist = torch.cdist(x1=x, x2=x, p=2)  # (n, n)
+    x_to_device = x.to(device)
+    if x_to_device.shape[0] * x_to_device.shape[1] < batch_size * 200:  # direct computes the whole matrix
+        dist = torch.cdist(x1=x_to_device, x2=x_to_device, p=2)  # (n, n)
         sorted_dist, indices = torch.sort(dist, dim=1, descending=False)
         ground_min_dist_square = sorted_dist[:, 1]  # the 0-th column is the distance to oneself
         topk_neighbors = indices[:, 1:1 + top_k]
         topk_dists = sorted_dist[:, 1:1 + top_k]
     else:  # calculate the nearest neighbors in batches
-        num_iter = x.shape[0] // batch_size + 1
+        num_iter = x_to_device.shape[0] // batch_size + 1
         topk_neighbors_list = list()
         ground_min_dist_square_list = list()
         sorted_dist_list = list()
         for i in tqdm(torch.arange(num_iter), desc='computing nearest neighbors'):
-            batch_x = x[i * batch_size: (i + 1) * batch_size, :]
-            dist = torch.cdist(x1=batch_x, x2=x, p=2)  # (n, n)
+            batch_x = x_to_device[i * batch_size: (i + 1) * batch_size, :]
+            dist = torch.cdist(x1=batch_x, x2=x_to_device, p=2)  # (n, n)
             sorted_dist, indices = torch.sort(dist, dim=1, descending=False)
             batch_ground_min_dist_square = sorted_dist[:, 1]  # the 0-th column is the distance to oneself
             batch_topk_neighbors = indices[:, 1:1 + top_k]
