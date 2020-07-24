@@ -23,7 +23,7 @@
       [64, 128, 5, true]
     ]
   },
-  "resne37": {
+  "resnet37": {
     "block_name": "ResidualBottleneckBlock",
     "stage_args": [
       [32, 32, 4, false],
@@ -31,7 +31,7 @@
       [64, 128, 4, true]
     ]
   },
-  "resne27": {
+  "resnet27": {
     "block_name": "ResidualBottleneckBlock",
     "stage_args": [
       [32, 32, 3, false],
@@ -39,7 +39,7 @@
       [64, 128, 3, true]
     ]
   },
-  "resne17": {
+  "resnet17": {
     "block_name": "ResidualBottleneckBlock",
     "stage_args": [
       [32, 32, 2, false],
@@ -47,7 +47,7 @@
       [64, 128, 2, true]
     ]
   },
-    "resne7": {
+    "resnet7": {
     "block_name": "ResidualBottleneckBlock",
     "stage_args": [
       [32, 32, 1, false],
