@@ -3,6 +3,7 @@ from src.models.DenseNetwork.loss import nearest_neighbors, kl_div_add_mse_loss
 from src.models.utils.distance import euclidean_softmax_similarity
 import torch
 
+
 def test_kl_mse_loss():
     x = torch.tensor([[1.3653, -0.5120, -0.3876,  1.0540],
                       [-0.3208, -0.2595, -0.7641,  2.5738],
@@ -21,7 +22,15 @@ def test_kl_mse_loss():
 
 
 def test_nn_softmax_loss():
-    x = torch.tensor([[1.3653, -0.5120, -0.3876, 1.0540],
-                      [-0.3208, -0.2595, -0.7641, 2.5738],
-                      [1.0413, 0.9428, 0.4569, 0.2637]])
-    euclidean_softmax_similarity(x[0, :], x[0, :], 0.2)
+    x = torch.tensor([[1., 2, 3,],
+                      [5., 1, 7,],
+                      [4., 2, 1,]])
+    anchor_idx = torch.tensor([[2, 1], [0, 2], [0, 1]])
+    y = x[anchor_idx]
+    assert torch.all(torch.eq(y, torch.tensor([[[4., 2, 1], [5., 1, 7,]],
+                                               [[1., 2, 3], [4., 2, 1,]],
+                                               [[1., 2, 3], [5., 1, 7,]]])))
+    assert (euclidean_softmax_similarity(x, y, None, 13)[0, 0] - 0.82324) < 1e-4
+
+
+test_nn_softmax_loss()

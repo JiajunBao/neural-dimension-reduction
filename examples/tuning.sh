@@ -252,16 +252,16 @@ set -x
 #done
 #
 
+
 TOP_K=2000
 
-
-for LR in 1e-8 1e-7 1e-6 1e-5 1e-4 1e-3 1e-2
+for LR in 5e-4 1e-4 5e-5 1e-5 5e-6 1e-6 5e-7 1e-7
 do
-  for HIDDEN_DIMS in 5000-1000-200-200-200 5000-2000-300-300-300 5000-3000-400-400-400
+  for HIDDEN_DIMS in 500-100-20 500-100-20-20-20 500-100-20-20-20-20 500-100-20-20-20-20-20 512-512-64-64-64-32-32-20-20 512-512-128-128-128-64-64-64-32-32-20-20 512-512-256-256-256-128-128-128-64-64-64-32-32-20-20
   do
     python examples/train.py \
     --input_dir data/processed/sample \
-    --output_dir checkpoints/shortcut-sample/"${HIDDEN_DIMS}"/top${TOP_K}/${LR} \
+    --output_dir checkpoints/sample/"${HIDDEN_DIMS}"/top${TOP_K}/${LR} \
     --learning_rate ${LR} \
     --n_epoch 1200 \
     --per_gpu_batch_size 90000 \
@@ -269,12 +269,11 @@ do
     --weight_decay 1e-5 \
     --top_k ${TOP_K} \
     --hidden_dims_list "${HIDDEN_DIMS}" \
-    --add_shortcut True
+    --add_shortcut False
   done
 done
 
-
-LR=1e-7
+LR=1e-6
 HIDDEN_DIMS=5000-3000-400-400-400
 
 for TOP_K in 1998 1996 1994 1992 1990 1988 1986 1984 1982 1980 1978 1976 1974 1972 1970 1968
@@ -292,21 +291,23 @@ do
   --add_shortcut True
 done
 
-
 TOP_K=2000
-LR=5e-7
-
-for HIDDEN_DIMS in 200-100-100-50-50-25-25-20 200-200-100-100-100-50-50-50-25-25-25-20-20 200-200-200-100-100-100-100-50-50-50-50-25-25-25-25-20-20-20 200-200-200-200-100-100-100-100-100-50-50-50-50-50-25-25-25-25-25-20-20-20-20
+LR=5e-6
+for LR in 5e-4 1e-4 5e-5 1e-5 5e-6 1e-6 5e-7 1e-7
 do
-  python examples/train.py \
-  --input_dir data/processed/sample \
-  --output_dir checkpoints/shortcut-sample/"${HIDDEN_DIMS}"/top${TOP_K}/${LR} \
-  --learning_rate ${LR} \
-  --n_epoch 1200 \
-  --per_gpu_batch_size 90000 \
-  --num_eval_per_epoch 2 \
-  --weight_decay 1e-5 \
-  --top_k ${TOP_K} \
-  --hidden_dims_list "${HIDDEN_DIMS}" \
-  --add_shortcut True
+  for HIDDEN_DIMS in 5000-1000-200-200-200 5000-2000-300-300-300 5000-3000-400-400-400 500-100-20 500-100-20-20-20 500-100-20-20-20-20 500-100-20-20-20-20-20 512-512-64-64-64-32-32-20-20 512-512-128-128-128-64-64-64-32-32-20-20 512-512-256-256-256-128-128-128-64-64-64-32-32-20-20
+  do
+    python examples/train.py \
+    --input_dir data/processed/sample \
+    --output_dir checkpoints/shortcut-sample/"${HIDDEN_DIMS}"/top${TOP_K}/${LR} \
+    --learning_rate ${LR} \
+    --n_epoch 1200 \
+    --per_gpu_batch_size 90000 \
+    --num_eval_per_epoch 2 \
+    --weight_decay 1e-5 \
+    --top_k ${TOP_K} \
+    --hidden_dims_list "${HIDDEN_DIMS}" \
+    --add_shortcut True
+  done
 done
+

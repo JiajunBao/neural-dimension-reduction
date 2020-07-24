@@ -41,7 +41,7 @@ def nearest_neighbors(x, top_k, device):
     return ground_min_dist_square.cpu(), topk_neighbors.cpu(), topk_dists.cpu()
 
 
-def euclidean_softmax_similarity(vec_i, vec_j, ground_min_dist_square_i, two_eps_square=1):
+def euclidean_softmax_similarity(vec_i, vec_j, ground_min_dist_square_i=None, two_eps_square=1):
     """
     calculate inverse similarity for inputs:
         1 / ((d_{in}(x_i, x_j))^2 / d_i^2 + eps)
@@ -55,7 +55,7 @@ def euclidean_softmax_similarity(vec_i, vec_j, ground_min_dist_square_i, two_eps
     """
 
     din = (vec_i.unsqueeze(dim=1) - vec_j).square().sum(dim=2)  # (n, m)
-    sim_j_given_i = F.softmin(din ** 2 / two_eps_square, dim=1)  # (n, m)
+    sim_j_given_i = F.softmin(din / two_eps_square, dim=1)  # (n, m)
     return sim_j_given_i
 
 
