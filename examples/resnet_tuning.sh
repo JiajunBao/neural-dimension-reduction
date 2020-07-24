@@ -1,3 +1,6 @@
+set -Eeuo pipefail
+set -x
+
 #TOP_K=2000
 #LR=1e-3
 #
