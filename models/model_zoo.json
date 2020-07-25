@@ -23,7 +23,7 @@
       [64, 128, 5, true]
     ]
   },
-  "resnet37": {
+  "resnetK37": {
     "block_name": "ResidualBottleneckBlock",
     "stage_args": [
       [32, 32, 4, false],
