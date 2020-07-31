@@ -40,4 +40,6 @@ class TSNEMapper(Module):
 class RBM(Module):
     def __init__(self, ):
         super(RBM, self).__init__()
-        self.encoder = encoder
+
+    def forward(self):
+        pass
