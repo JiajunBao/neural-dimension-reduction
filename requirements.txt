@@ -18,6 +18,7 @@ tensorboard
 pandas
 scikit-learn
 torch
+torchvision
 runx
 notebook
 seaborn
