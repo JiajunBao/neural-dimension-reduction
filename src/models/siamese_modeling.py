@@ -1,14 +1,16 @@
+import torch
+from torch import nn
 from collections import OrderedDict
 
 import torch
 from torch import nn
 from torch.nn import functional as F
 import pandas as pd
-from torch.utils.data import Dataset
+from torch.utils.data import DataLoader, Dataset
 
 
 def far_func(sorted_dist: torch.tensor, indices: torch.tensor):
-    return sorted_dist[:, -1].view(-1, 1), indices[:, -1].view(-1, 1)
+    return sorted_dist[:, -1], indices[:, -1]
 
 
 def calculate_distance(x, far_fn):
@@ -32,8 +34,8 @@ def make_pairs(x, far_fn):
     close_idx = close_idx.view(-1, 1)  # (n, 1)
     positive_pairs = torch.cat((anchor_idx, close_idx), dim=1)  # (n, 2)
     positive_labels = torch.ones(n, dtype=torch.int64)  # (n, )
-    far_idx = far_idx.view(-1, 1)  # (n * r, )
-    anchor_idx_flatten = anchor_idx.expand(-1, r).view(-1, 1)  # (n * r, )
+    far_idx = far_idx.view(-1)  # (n * r, )
+    anchor_idx_flatten = anchor_idx.expand(-1, r).view(-1)  # (n * r, )
     negative_pairs = torch.cat((anchor_idx_flatten, far_idx), dim=1)  # (n * r, 2)
     negative_labels = torch.zeros(n * r, dtype=torch.int64)  # (n * r, )
     pairs = torch.cat((positive_pairs, negative_pairs), dim=0)
@@ -41,17 +43,16 @@ def make_pairs(x, far_fn):
     return pairs, labels
 
 
-class SurveyorDataSet(Dataset):
-    def __init__(self, data, pairs, labels):
+class SiameseDataSet(Dataset):
+    def __init__(self, data, labels):
         self.data = data
-        self.pairs = pairs
         self.labels = labels
 
     @classmethod
     def from_df(cls, path_to_dataframe):
-        data = torch.from_numpy(pd.read_csv(path_to_dataframe, header=None).to_numpy()).to(torch.float32)
-        pairs, labels = make_pairs(data, far_func)
-        return cls(data, pairs, labels)
+        x = torch.from_numpy(pd.read_csv(path_to_dataframe, header=None).to_numpy()).to(torch.float32)
+        pairs, labels = make_pairs(x, far_func)
+        return cls(pairs, labels)
 
     @classmethod
     def from_dataset(cls, path_to_tensor):
@@ -61,61 +62,36 @@ class SurveyorDataSet(Dataset):
         return len(self.labels)
 
     def __getitem__(self, idx):
-        indexs = self.pairs[idx]
-        left = self.data[indexs[0]]
-        right = self.data[indexs[1]]
-        return left, right, self.labels[idx]
+        return self.data[idx], self.labels[idx]
 
 
-class Surveyor(nn.Module):
-    def __init__(self):
-        super(Surveyor, self).__init__()
+class SiameseNet(nn.Module):
+    def __init__(self, dim_in, cin=1, cout=8):
+        super(SiameseNet, self).__init__()
         self.encoder = nn.Sequential(
             OrderedDict([
-                ('bn1', nn.BatchNorm1d(500)),
+                ('bn1', nn.BatchNorm1d(cin)),
                 ('relu1', nn.ReLU()),
-                ('fc1', nn.Linear(500, 100)),
-                ('bn2', nn.BatchNorm1d(100)),
+                ('conv1', nn.Conv1d(cin, cout // 4, kernel_size=1, stride=1)),
+                ('bn2', nn.BatchNorm1d(cout // 4)),
                 ('relu2', nn.ReLU()),
-                ('fc2', nn.Linear(100, 20)),
-                ('bn3', nn.BatchNorm1d(20)),
+                ('conv2', nn.Conv1d(cout // 4, cout // 4, kernel_size=3, stride=1, padding=1)),
+                ('bn3', nn.BatchNorm1d(cout // 4)),
                 ('relu3', nn.ReLU()),
-                ('fc3', nn.Linear(20, 20)),
-                ('bn4', nn.BatchNorm1d(20)),
-                ('relu4', nn.ReLU()),
-                ('fc4', nn.Linear(20, 20)),
-                ('bn5', nn.BatchNorm1d(20)),
-                ('relu5', nn.ReLU()),
-                ('fc5', nn.Linear(20, 20)),
-            ])
-        )
-        self.decoder = nn.Sequential(
-            OrderedDict([
-                ('bn1', nn.BatchNorm1d(2 * 20)),
-                ('relu1', nn.ReLU()),
-                ('fc1', nn.Linear(2 * 20, 20)),
-                ('bn2', nn.BatchNorm1d(20)),
-                ('relu2', nn.ReLU()),
-                ('fc2', nn.Linear(20, 2)),
+                ('conv3', nn.Conv1d(cout // 4, cout, kernel_size=1)),
+                ('flatten', nn.Flatten()),
+                ('linear', nn.Linear(cout * dim_in, dim_in)),
+                ('sigmoid', nn.Sigmoid())
             ]))
-
-    def encode_batch(self, x):
-        return self.encoder(x)
-
-    def decode_batch(self, out1, out2):
-        x = torch.cat((out1, out2), dim=1)
-        out = self.decoder(x)
-        logits = F.softmax(out, dim=1)
-        return logits
+        self.out = nn.Linear(dim_in, 1)
 
     def forward(self, x1, x2, labels=None):
-        out1 = self.encode_batch(x1)
-        out2 = self.encode_batch(x2)
-        logits = self.decode_batch(out1, out2)
+        out1 = self.encoder(x1)
+        out2 = self.encoder(x2)
+        dis = torch.abs(out1 - out2)
+        logits = self.out(dis)
         if labels:
-            loss_fn = nn.CrossEntropyLoss()
+            loss_fn = nn.BCEWithLogitsLoss(size_average=True)
             loss = loss_fn(logits, labels)
             return logits, loss
-        return logits, out1, out2
-
-
+        return logits
