@@ -113,20 +113,21 @@ class Surveyor(nn.Module):
         return self.encoder(x)
 
     def decode_batch(self, out1, out2):
+        p = thesis_output_inverse_similarity(out1, out2)
         x = torch.cat((out1, out2), dim=1)
         out = self.decoder(x)
         logits = F.softmax(out, dim=1)
-        return logits
+        return logits, p
 
-    def forward(self, x1, x2, labels=None):
+    def forward(self, x1, x2, q, labels=None, lam=1):
         out1 = self.encode_batch(x1)
         out2 = self.encode_batch(x2)
-        logits = self.decode_batch(out1, out2)
+        logits, p = self.decode_batch(out1, out2)
         if labels:
             loss_fn = nn.CrossEntropyLoss()
-            loss = loss_fn(logits, labels)
-            return logits, loss
-        return logits, out1, out2
+            loss = loss_fn(logits, labels) + lam * thesis_kl_div_add_mse_loss(p, q)
+            return logits, p, out1, out2, loss
+        return logits, p, out1, out2
 
 
 def thesis_output_inverse_similarity(y1, y2):
