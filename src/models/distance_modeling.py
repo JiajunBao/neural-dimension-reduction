@@ -82,7 +82,7 @@ class Surveyor(nn.Module):
                 ('bn0', nn.BatchNorm1d(dim_in)),
                 ('relu0', nn.ReLU(inplace=True)),
                 ('fc0', nn.Linear(dim_in, 500)),
-                ('bn1', nn.BatchNorm1d(dim_in)),
+                ('bn1', nn.BatchNorm1d(500)),
                 ('relu1', nn.ReLU(inplace=True)),
                 ('fc1', nn.Linear(500, 100)),
                 ('bn2', nn.BatchNorm1d(100)),
