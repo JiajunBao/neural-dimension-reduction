@@ -6,6 +6,8 @@ from torch.nn import functional as F
 import pandas as pd
 from torch.utils.data import Dataset
 
+STABLE_FACTOR = 1e-8
+
 
 def far_func(sorted_dist: torch.tensor, indices: torch.tensor):
     return sorted_dist[:, -1].view(-1, 1), indices[:, -1].view(-1, 1)
@@ -38,20 +40,25 @@ def make_pairs(x, far_fn):
     negative_labels = torch.zeros(n * r, dtype=torch.int64)  # (n * r, )
     pairs = torch.cat((positive_pairs, negative_pairs), dim=0)
     labels = torch.cat((positive_labels, negative_labels), dim=0)
-    return pairs, labels
+    return pairs, labels, close_distance, far_distance
 
 
 class SurveyorDataSet(Dataset):
-    def __init__(self, data, pairs, labels):
+    def __init__(self, data, pairs, labels, q):
         self.data = data
         self.pairs = pairs
         self.labels = labels
+        self.q = q
 
     @classmethod
     def from_df(cls, path_to_dataframe):
         data = torch.from_numpy(pd.read_csv(path_to_dataframe, header=None).to_numpy()).to(torch.float32)
-        pairs, labels = make_pairs(data, far_func)
-        return cls(data, pairs, labels)
+        pairs, labels, close_distance, far_distance = make_pairs(data, far_func)
+        q = thesis_input_inverse_similarity(data[pairs[:, 0]],
+                                            data[pairs[:, 1]],
+                                            close_distance[pairs[:, 0]],
+                                            close_distance[pairs[:, 1]])
+        return cls(data, pairs, labels, q)
 
     @classmethod
     def from_dataset(cls, path_to_tensor):
@@ -64,7 +71,7 @@ class SurveyorDataSet(Dataset):
         indexs = self.pairs[idx]
         left = self.data[indexs[0]]
         right = self.data[indexs[1]]
-        return left, right, self.labels[idx]
+        return left, right, self.labels[idx], self.q[idx]
 
 
 class Surveyor(nn.Module):
@@ -119,3 +126,24 @@ class Surveyor(nn.Module):
         return logits, out1, out2
 
 
+def thesis_output_inverse_similarity(y1, y2):
+    dout = torch.sum((y1 - y2) ** 2, dim=1)
+    return 1 / (dout + 1)
+
+
+def thesis_input_inverse_similarity(x1, x2, x1_min_dist, x2_min_dist):
+    din = torch.sum((x1 - x2) ** 2, dim=1)
+    q1 = 1 / ((din / (x1_min_dist ** 2)) + STABLE_FACTOR)
+    q2 = 1 / ((din / (x2_min_dist ** 2)) + STABLE_FACTOR)
+    return (q1 + q2) / 2
+
+
+def thesis_kl_div_add_mse_loss(p, q, lam=1):
+    """
+    calculate the sum of kl divergence and mse loss
+    :param p: p in the formula (P20-2) output similarities
+    :param q: q in the formula (P20-2) input similarities
+    :param lam: the constant that balances the influence of two losses
+    :return: torch.tensor of the shape (,)
+    """
+    return torch.sum(p * torch.log(p / q)) + lam * torch.sum((p - q) ** 2)
