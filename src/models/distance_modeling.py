@@ -91,7 +91,7 @@ class SurveyorDataSet(Dataset):
 
     @classmethod
     def from_df(cls, path_to_dataframe):
-        x = torch.from_numpy(pd.read_csv(path_to_dataframe).to_numpy()).to(torch.float32)
+        x = torch.from_numpy(pd.read_csv(path_to_dataframe, header=None).to_numpy()).to(torch.float32)
         pairs, labels = make_pairs(x, far_func)
         return cls(pairs, labels)
 
