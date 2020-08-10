@@ -42,7 +42,7 @@ class Siamese(nn.Module):
 
 
 def far_func(sorted_dist: torch.tensor, indices: torch.tensor):
-    return sorted_dist[:, -1], indices[:, -1]
+    return sorted_dist[:, -1].view(-1, 1), indices[:, -1].view(-1, 1)
 
 
 def calculate_distance(x, far_fn):
@@ -75,8 +75,8 @@ def make_pairs(x, far_fn):
     close_idx = close_idx.view(-1, 1)  # (n, 1)
     positive_pairs = torch.cat((anchor_idx, close_idx), dim=1)  # (n, 2)
     positive_labels = torch.ones(n, dtype=torch.int64)  # (n, )
-    far_idx = far_idx.view(-1)  # (n * r, )
-    anchor_idx_flatten = anchor_idx.expand(-1, r).view(-1)  # (n * r, )
+    far_idx = far_idx.view(-1, 1)  # (n * r, )
+    anchor_idx_flatten = anchor_idx.expand(-1, r).view(-1, 1)  # (n * r, )
     negative_pairs = torch.cat((anchor_idx_flatten, far_idx), dim=1)  # (n * r, 2)
     negative_labels = torch.zeros(n * r, dtype=torch.int64)  # (n * r, )
     pairs = torch.cat((positive_pairs, negative_pairs), dim=0)
@@ -85,15 +85,16 @@ def make_pairs(x, far_fn):
 
 
 class SurveyorDataSet(Dataset):
-    def __init__(self, data, labels):
+    def __init__(self, data, pairs, labels):
         self.data = data
+        self.pairs = pairs
         self.labels = labels
 
     @classmethod
     def from_df(cls, path_to_dataframe):
-        x = torch.from_numpy(pd.read_csv(path_to_dataframe, header=None).to_numpy()).to(torch.float32)
-        pairs, labels = make_pairs(x, far_func)
-        return cls(pairs, labels)
+        data = torch.from_numpy(pd.read_csv(path_to_dataframe, header=None).to_numpy()).to(torch.float32)
+        pairs, labels = make_pairs(data, far_func)
+        return cls(data, pairs, labels)
 
     @classmethod
     def from_dataset(cls, path_to_tensor):
@@ -103,7 +104,10 @@ class SurveyorDataSet(Dataset):
         return len(self.labels)
 
     def __getitem__(self, idx):
-        return self.data[idx], self.labels[idx]
+        indexs = self.pairs[idx]
+        left = self.data[indexs[0]]
+        right = self.data[indexs[1]]
+        return left, right, self.labels[idx]
 
 
 class Surveyor(nn.Module):
