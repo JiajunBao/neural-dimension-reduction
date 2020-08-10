@@ -123,7 +123,7 @@ class Surveyor(nn.Module):
         out1 = self.encode_batch(x1)
         out2 = self.encode_batch(x2)
         logits, p = self.decode_batch(out1, out2)
-        if labels:
+        if labels is not None:
             loss_fn = nn.CrossEntropyLoss()
             loss = loss_fn(logits, labels) + lam * thesis_kl_div_add_mse_loss(p, q)
             return logits, p, out1, out2, loss
