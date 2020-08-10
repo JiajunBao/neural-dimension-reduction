@@ -119,11 +119,11 @@ class Surveyor(nn.Module):
         logits = F.softmax(out, dim=1)
         return logits, p
 
-    def forward(self, x1, x2, q, labels=None, lam=1):
+    def forward(self, x1, x2, q=None, labels=None, lam=1):
         out1 = self.encode_batch(x1)
         out2 = self.encode_batch(x2)
         logits, p = self.decode_batch(out1, out2)
-        if labels is not None:
+        if labels is not None and q is not None:
             loss_fn = nn.CrossEntropyLoss()
             loss = loss_fn(logits, labels) + lam * thesis_kl_div_add_mse_loss(p, q)
             return logits, p, out1, out2, loss
