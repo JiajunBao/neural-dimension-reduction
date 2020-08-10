@@ -75,30 +75,33 @@ class SurveyorDataSet(Dataset):
 
 
 class Surveyor(nn.Module):
-    def __init__(self):
+    def __init__(self, dim_in=200, dim_out=20):
         super(Surveyor, self).__init__()
         self.encoder = nn.Sequential(
             OrderedDict([
-                ('bn1', nn.BatchNorm1d(500)),
-                ('relu1', nn.ReLU()),
+                ('bn0', nn.BatchNorm1d(dim_in)),
+                ('relu0', nn.ReLU(inplace=True)),
+                ('fc0', nn.Linear(dim_in, 500)),
+                ('bn1', nn.BatchNorm1d(dim_in)),
+                ('relu1', nn.ReLU(inplace=True)),
                 ('fc1', nn.Linear(500, 100)),
                 ('bn2', nn.BatchNorm1d(100)),
-                ('relu2', nn.ReLU()),
+                ('relu2', nn.ReLU(inplace=True)),
                 ('fc2', nn.Linear(100, 20)),
                 ('bn3', nn.BatchNorm1d(20)),
-                ('relu3', nn.ReLU()),
+                ('relu3', nn.ReLU(inplace=True)),
                 ('fc3', nn.Linear(20, 20)),
                 ('bn4', nn.BatchNorm1d(20)),
-                ('relu4', nn.ReLU()),
+                ('relu4', nn.ReLU(inplace=True)),
                 ('fc4', nn.Linear(20, 20)),
                 ('bn5', nn.BatchNorm1d(20)),
-                ('relu5', nn.ReLU()),
-                ('fc5', nn.Linear(20, 20)),
+                ('relu5', nn.ReLU(inplace=True)),
+                ('fc5', nn.Linear(20, dim_out)),
             ])
         )
         self.decoder = nn.Sequential(
             OrderedDict([
-                ('bn1', nn.BatchNorm1d(2 * 20)),
+                ('bn1', nn.BatchNorm1d(2 * dim_out)),
                 ('relu1', nn.ReLU()),
                 ('fc1', nn.Linear(2 * 20, 20)),
                 ('bn2', nn.BatchNorm1d(20)),
