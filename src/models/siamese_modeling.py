@@ -1,12 +1,10 @@
-import torch
-from torch import nn
 from collections import OrderedDict
 
 import torch
 from torch import nn
-from torch.nn import functional as F
+from tqdm.auto import tqdm
 import pandas as pd
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import Dataset
 
 
 def far_func(sorted_dist: torch.tensor, indices: torch.tensor):
@@ -15,15 +13,41 @@ def far_func(sorted_dist: torch.tensor, indices: torch.tensor):
 
 def calculate_distance(x, far_fn):
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+    batch_size = 512
     x_device = x.to(device)
-    # TODO: we first assume memory fits in memory. Later, we can process the data in batches.
-    dist = torch.cdist(x1=x_device, x2=x_device, p=2)  # (n, n)
-    sorted_dist, indices = torch.sort(dist, dim=1, descending=False)
-    sorted_dist, indices = sorted_dist.cpu(), indices.cpu()
-    anchor_idx = torch.arange(x.shape[0])  # (n,)
-    # the 0-th column is the distance to oneself
-    close_distance, close_idx = sorted_dist[:, 1], indices[:, 1]  # (n,)
-    far_distance, far_idx = far_fn(sorted_dist, indices)  # (n, r)
+    if x.shape[0] * x.shape[1] < batch_size * 200:  # direct computes the whole matrix
+        # TODO: we first assume memory fits in memory. Later, we can process the data in batches.
+        dist = torch.cdist(x1=x_device, x2=x_device, p=2)  # (n, n)
+        sorted_dist, indices = torch.sort(dist, dim=1, descending=False)
+        sorted_dist, indices = sorted_dist.cpu(), indices.cpu()
+        anchor_idx = torch.arange(x.shape[0])  # (n,)
+        # the 0-th column is the distance to oneself
+        close_distance, close_idx = sorted_dist[:, 1], indices[:, 1]  # (n,)
+        far_distance, far_idx = far_fn(sorted_dist, indices)  # (n, r)
+    else:
+        num_iter = x.shape[0] // batch_size + 1
+        anchor_idx_list, close_idx_list, far_idx_list = list(), list(), list()
+        close_distance_list, far_distance_list = list(), list()
+        for i in tqdm(torch.arange(num_iter), desc='create triplets'):
+            batch_x = x[i * batch_size: (i + 1) * batch_size, :].to(device)
+
+            dist = torch.cdist(x1=batch_x, x2=x_device, p=2)  # (n, n)
+            sorted_dist, indices = torch.sort(dist, dim=1, descending=False)
+            sorted_dist, indices = sorted_dist, indices
+            anchor_idx = torch.arange(batch_x.shape[0])  # (n,)
+            # the 0-th column is the distance to oneself
+            close_distance, close_idx = sorted_dist[:, 1], indices[:, 1]  # (n,)
+            far_distance, far_idx = far_fn(sorted_dist, indices)  # (n, r)
+            anchor_idx_list.append(anchor_idx.cpu())
+            close_idx_list.append(close_idx.cpu())
+            far_idx_list.append(far_idx.cpu())
+            close_distance_list.append(close_distance.cpu())
+            far_distance_list.append(far_distance.cpu())
+        anchor_idx = torch.cat(anchor_idx_list, dim=0)
+        close_idx = torch.cat(close_idx_list, dim=0)
+        far_idx = torch.cat(far_idx_list, dim=0)
+        close_distance = torch.cat(close_distance_list, dim=0)
+        far_distance = torch.cat(far_distance_list, dim=0)
     return anchor_idx, close_idx, far_idx, close_distance, far_distance
 
 
@@ -65,9 +89,9 @@ class SiameseDataSet(Dataset):
         return self.data[idx], self.labels[idx]
 
 
-class Surveyor(nn.Module):
+class SiameseNetwork(nn.Module):
     def __init__(self, dim_in=200, dim_out=20):
-        super(Surveyor, self).__init__()
+        super(SiameseNetwork, self).__init__()
         self.encoder = nn.Sequential(
             OrderedDict([
                 ('bn0', nn.BatchNorm1d(dim_in)),

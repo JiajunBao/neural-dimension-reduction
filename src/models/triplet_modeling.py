@@ -38,39 +38,55 @@ def make_triplets(x, far_fn):
 
 
 class TripletDataSet(Dataset):
-    def __init__(self, data, labels):
+    def __init__(self, data, anchor_idx, close_idx, far_idx):
         self.data = data
-        self.labels = labels
+        self.anchor_idx = anchor_idx
+        self.close_idx = close_idx
+        self.far_idx = far_idx
 
     @classmethod
     def from_df(cls, path_to_dataframe):
-        x = torch.from_numpy(pd.read_csv(path_to_dataframe, header=None).to_numpy()).to(torch.float32)
-        pairs, labels = make_pairs(x, far_func)
-        return cls(pairs, labels)
+        data = torch.from_numpy(pd.read_csv(path_to_dataframe, header=None).to_numpy()).to(torch.float32)
+        anchor_idx, close_idx, far_idx = make_triplets(data, far_func)
+        return cls(data, anchor_idx, close_idx, far_idx)
 
     @classmethod
-    def from_dataset(cls, path_to_tensor):
-        return torch.load(path_to_tensor)
+    def from_dataset(cls, path_to_dataset):
+        return torch.load(path_to_dataset)
 
     def __len__(self):
-        return len(self.labels)
+        return len(self.anchor_idx)
 
     def __getitem__(self, idx):
-        return self.data[idx], self.labels[idx]
+        anchor, pos, neg = self.anchor_idx[idx], self.close_idx[idx], self.far_idx[idx]
+        return self.data[anchor], self.data[pos], self.data[neg]
 
 
 class TripletNet(nn.Module):
     def __init__(self, encoder):
-        super(Tripletnet, self).__init__()
+        super(TripletNet, self).__init__()
         self.encoder = encoder
 
-    def forward(self, x, y, z):
-        embedded_x = self.encoder(x)
-        embedded_close = self.encoder(y)
-        embedded_far = self.encoder(z)
-        dist_close = F.pairwise_distance(embedded_x, embedded_close, 2)
-        dist_far = F.pairwise_distance(embedded_x, embedded_far, 2)
-        return dist_close, dist_far, embedded_x, embedded_close, embedded_far
+    def encode_batch(self, x):
+        return self.encoder(x)
+
+    @staticmethod
+    def decode_batch(out1, out2):
+        return (out2 - out1).pow(2).sum(dim=1).sqrt()  # distances (after squared root)
+
+    def forward(self, x, y, z, labels=None):
+        embedded_anchor = self.encoder(x)
+        embedded_pos = self.encoder(y)
+        embedded_neg = self.encoder(z)
+        if labels is not None:
+            loss_fn = TripletLoss(1.)
+            distance_pos, distance_neg, loss = loss_fn(embedded_anchor, embedded_pos, embedded_neg)
+            return distance_pos, distance_neg, loss
+            # the distance function in loss_fn should be the same as that of self.decode_batch
+        else:
+            distance_pos = self.decode_batch(embedded_anchor, embedded_pos)
+            distance_neg = self.decode_batch(embedded_anchor, embedded_neg)
+            return distance_pos, distance_neg
 
 
 class TripletLoss(nn.Module):
@@ -84,8 +100,8 @@ class TripletLoss(nn.Module):
         self.margin = margin
 
     def forward(self, anchor, positive, negative, size_average=True):
-        distance_positive = (anchor - positive).pow(2).sum(1)  # .pow(.5)
-        distance_negative = (anchor - negative).pow(2).sum(1)  # .pow(.5)
-        losses = F.relu(distance_positive - distance_negative + self.margin)
-        return losses.mean() if size_average else losses.sum()
+        distance_pos = (anchor - positive).pow(2).sum(1)  # .pow(.5)
+        distance_neg = (anchor - negative).pow(2).sum(1)  # .pow(.5)
+        losses = torch.clamp(distance_pos - distance_neg + self.margin, min=0)
+        return distance_pos, distance_neg, losses.mean() if size_average else losses.sum()
 
