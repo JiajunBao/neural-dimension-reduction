@@ -37,14 +37,14 @@ def calculate_distance(x, far_fn):
 
             dist = torch.cdist(x1=batch_x, x2=x_device, p=2)  # (n, n)
             sorted_dist, indices = torch.sort(dist, dim=1, descending=False)
-            sorted_dist, indices = sorted_dist.cpu(), indices.cpu()
+            sorted_dist, indices = sorted_dist, indices
             anchor_idx = torch.arange(x.shape[0])  # (n,)
             # the 0-th column is the distance to oneself
             close_distance, close_idx = sorted_dist[:, 1], indices[:, 1]  # (n,)
             far_distance, far_idx = far_fn(sorted_dist, indices)  # (n, r)
-            anchor_idx_list.append(anchor_idx)
-            close_idx_list.append(close_idx)
-            far_idx_list.append(far_idx)
+            anchor_idx_list.append(anchor_idx.cpu())
+            close_idx_list.append(close_idx.cpu())
+            far_idx_list.append(far_idx.cpu())
             close_distance_list.append(close_distance)
             far_distance_list.append(far_distance)
         anchor_idx = torch.cat(anchor_idx_list, dim=0)
