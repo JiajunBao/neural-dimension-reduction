@@ -188,15 +188,15 @@ class RetrieveSystem(object):
         self.distance_measure = distance_measure
 
     def retrieve_query(self, query, ignore_idx, x_embedded, x_idx, topk=20):
-        query = query.to(self.device)
+        query_device = query.view(-1, 1).to(self.device)
         cls_distances = list()
         p_distances = list()
         with torch.no_grad():
             for i, x in zip(x_idx, x_embedded):
                 if ignore_idx is not None and i == ignore_idx:
                     continue
-                x_device = x.to(self.device)
-                logits, p = self.distance_measure.decode_batch(query, x_device)
+                x_device = x.view(-1, 1).to(self.device)
+                logits, p = self.distance_measure.decode_batch(query_device, x_device)
                 cls_distances.append(logits[1].item())
                 p_distances.append(p.item())
         cls_distances = torch.tensor(cls_distances)
