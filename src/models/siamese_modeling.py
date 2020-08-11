@@ -65,33 +65,66 @@ class SiameseDataSet(Dataset):
         return self.data[idx], self.labels[idx]
 
 
-class SiameseNet(nn.Module):
-    def __init__(self, dim_in, cin=1, cout=8):
-        super(SiameseNet, self).__init__()
+class Surveyor(nn.Module):
+    def __init__(self, dim_in=200, dim_out=20):
+        super(Surveyor, self).__init__()
         self.encoder = nn.Sequential(
             OrderedDict([
-                ('bn1', nn.BatchNorm1d(cin)),
-                ('relu1', nn.ReLU()),
-                ('conv1', nn.Conv1d(cin, cout // 4, kernel_size=1, stride=1)),
-                ('bn2', nn.BatchNorm1d(cout // 4)),
-                ('relu2', nn.ReLU()),
-                ('conv2', nn.Conv1d(cout // 4, cout // 4, kernel_size=3, stride=1, padding=1)),
-                ('bn3', nn.BatchNorm1d(cout // 4)),
-                ('relu3', nn.ReLU()),
-                ('conv3', nn.Conv1d(cout // 4, cout, kernel_size=1)),
-                ('flatten', nn.Flatten()),
-                ('linear', nn.Linear(cout * dim_in, dim_in)),
-                ('sigmoid', nn.Sigmoid())
+                ('bn0', nn.BatchNorm1d(dim_in)),
+                ('relu0', nn.ReLU(inplace=True)),
+                ('fc0', nn.Linear(dim_in, 500)),
+                ('bn1', nn.BatchNorm1d(500)),
+                ('relu1', nn.ReLU(inplace=True)),
+                ('fc1', nn.Linear(500, 100)),
+                ('bn2', nn.BatchNorm1d(100)),
+                ('relu2', nn.ReLU(inplace=True)),
+                ('fc2', nn.Linear(100, 20)),
+                ('bn3', nn.BatchNorm1d(20)),
+                ('relu3', nn.ReLU(inplace=True)),
+                ('fc3', nn.Linear(20, 20)),
+                ('bn4', nn.BatchNorm1d(20)),
+                ('relu4', nn.ReLU(inplace=True)),
+                ('fc4', nn.Linear(20, 20)),
+                ('bn5', nn.BatchNorm1d(20)),
+                ('relu5', nn.ReLU(inplace=True)),
+                ('fc5', nn.Linear(20, dim_out)),
+                ('logistic', nn.Sigmoid())
+            ])
+        )
+        self.decoder = nn.Sequential(
+            OrderedDict([
+                ('fc1', nn.Linear(dim_out, 1)),
             ]))
-        self.out = nn.Linear(dim_in, 1)
+
+    def encode_batch(self, x):
+        return self.encoder(x)
+
+    def decode_batch(self, out1, out2):
+        return (out2 - out1).pow(2).sum(dim=1).sqrt()  # distances (after squared root)
 
     def forward(self, x1, x2, labels=None):
-        out1 = self.encoder(x1)
-        out2 = self.encoder(x2)
-        dis = torch.abs(out1 - out2)
-        logits = self.out(dis)
-        if labels:
-            loss_fn = nn.BCEWithLogitsLoss(size_average=True)
-            loss = loss_fn(logits, labels)
-            return logits, loss
-        return logits
+        out1 = self.encode_batch(x1)
+        out2 = self.encode_batch(x2)
+        dist = self.decode_batch(out1, out2)
+        if labels is not None:
+            loss_fn = ContrastiveLoss(1.)
+            loss = loss_fn(dist, labels)
+            return dist, loss
+        return dist
+
+
+class ContrastiveLoss(nn.Module):
+    """
+    Contrastive loss
+    Takes embeddings of two samples and a target label == 1 if samples are from the same class and label == 0 otherwise
+    """
+
+    def __init__(self, margin, size_average=True):
+        super(ContrastiveLoss, self).__init__()
+        self.margin = margin
+        self.size_average = size_average
+
+    def forward(self, distances, target):
+        losses = 0.5 * (target.float() * distances +
+                        (1 - target).float() * torch.clamp(self.margin - distances, min=0).pow(2))
+        return losses.mean() if self.size_average else losses.sum()
