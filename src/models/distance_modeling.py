@@ -179,3 +179,14 @@ def thesis_kl_div_add_mse_loss(p, q, lam=1):
     :return: torch.tensor of the shape (,)
     """
     return torch.sum(p * torch.log(p / q)) + lam * torch.sum((p - q) ** 2)
+
+
+class RetrieveSystem(object):
+    def __init__(self, distance_measure):
+        distance_measure = distance_measure.setup()
+        self.distance_measure = distance_measure
+
+    def retrieve_batch(self, batch, x_embedded):
+        device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+
+

@@ -68,15 +68,16 @@ def make_pairs(x, far_fn):
 
 
 class SiameseDataSet(Dataset):
-    def __init__(self, data, labels):
+    def __init__(self, data, pairs, labels):
         self.data = data
+        self.pairs = pairs
         self.labels = labels
 
     @classmethod
     def from_df(cls, path_to_dataframe):
-        x = torch.from_numpy(pd.read_csv(path_to_dataframe, header=None).to_numpy()).to(torch.float32)
-        pairs, labels, close_distance, far_distance = make_pairs(x, far_func)
-        return cls(pairs, labels)
+        data = torch.from_numpy(pd.read_csv(path_to_dataframe, header=None).to_numpy()).to(torch.float32)
+        pairs, labels, close_distance, far_distance = make_pairs(data, far_func)
+        return cls(data, pairs, labels)
 
     @classmethod
     def from_dataset(cls, path_to_tensor):
@@ -86,7 +87,10 @@ class SiameseDataSet(Dataset):
         return len(self.labels)
 
     def __getitem__(self, idx):
-        return self.data[idx], self.labels[idx]
+        indexes = self.pairs[idx]
+        left = self.data[indexes[0]]
+        right = self.data[indexes[1]]
+        return left, right, self.labels[idx]
 
 
 class SiameseNetwork(nn.Module):
