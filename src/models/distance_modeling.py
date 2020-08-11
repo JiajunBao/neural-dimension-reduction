@@ -17,7 +17,7 @@ def far_func(sorted_dist: torch.tensor, indices: torch.tensor):
 
 def calculate_distance(x, far_fn):
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-    batch_size = 2000
+    batch_size = 500
     x_device = x.to(device)
     if x.shape[0] * x.shape[1] < batch_size * 200:  # direct computes the whole matrix
         # TODO: we first assume memory fits in memory. Later, we can process the data in batches.
