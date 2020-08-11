@@ -178,7 +178,7 @@ def thesis_kl_div_add_mse_loss(p, q, lam=1):
     :param lam: the constant that balances the influence of two losses
     :return: torch.tensor of the shape (,)
     """
-    return torch.sum(p * torch.log(p / q)) + lam * torch.sum((p - q) ** 2)
+    return torch.mean(p * torch.log(p / q)) + lam * torch.sum((p - q) ** 2)
 
 
 class RetrieveSystem(object):
