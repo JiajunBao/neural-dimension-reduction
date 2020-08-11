@@ -4,7 +4,7 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 import pandas as pd
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, TensorDataset, DataLoader
 
 from tqdm.auto import tqdm
 
@@ -183,10 +183,44 @@ def thesis_kl_div_add_mse_loss(p, q, lam=1):
 
 class RetrieveSystem(object):
     def __init__(self, distance_measure):
-        distance_measure = distance_measure.setup()
+        self.device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+        distance_measure = distance_measure.to(self.device)
         self.distance_measure = distance_measure
 
-    def retrieve_batch(self, batch, x_embedded):
-        device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+    def retrieve_query(self, query, ignore_idx, x_embedded, x_idx, topk=20):
+        query = query.to(self.device)
+        cls_distances = list()
+        p_distances = list()
+        with torch.no_grad():
+            for i, x in zip(x_idx, x_embedded):
+                if ignore_idx is not None and i == ignore_idx:
+                    continue
+                x_device = x.to(self.device)
+                logits, p = self.distance_measure.decode_batch(query, x_device)
+                cls_distances.append(logits[1].item())
+                p_distances.append(p.item())
+        cls_distances = torch.tensor(cls_distances)
+        p_distances = torch.tensor(p_distances)
+        _, cls_nn_idx = cls_distances.sort()
+        _, p_nn_idx = p_distances.sort()
+        return cls_nn_idx[:topk], p_nn_idx[:topk]
 
+    def retrieve_corpus(self, corpus, block_list, database):
+        cls_pred_nn_top, p_distances_nn_top = list(), list()
+        x_idx = range(database.shape[0])
+        for ignore_idx, query in zip(block_list, corpus):
+            cls_distances, p_distances = self.retrieve_query(query, ignore_idx, database, x_idx, 20)
+            cls_pred_nn_top.append(cls_distances)
+            p_distances_nn_top.append(p_distances)
+        cls_pred_nn_top = torch.cat(cls_pred_nn_top, dim=0)
+        p_distances_nn_top = torch.cat(p_distances_nn_top, dim=0)
+        return cls_pred_nn_top, p_distances_nn_top
 
+    def recall(self, pred, gold, at_n=None):
+        results = dict()
+        if at_n is None:
+            at_n = [1, 5, 10, 20]
+        for n in at_n:
+            recall = float((pred[:, :n] == gold.view(-1, 1)).sum().item()) / len(gold)
+            results[f'recall@{n}'] = recall
+        return results
