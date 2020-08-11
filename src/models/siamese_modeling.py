@@ -8,7 +8,7 @@ from torch.utils.data import Dataset
 
 
 def far_func(sorted_dist: torch.tensor, indices: torch.tensor):
-    return sorted_dist[:, -1], indices[:, -1]
+    return sorted_dist[:, -1].view(-1, 1), indices[:, -1].view(-1, 1)
 
 
 def calculate_distance(x, far_fn):
@@ -58,13 +58,13 @@ def make_pairs(x, far_fn):
     close_idx = close_idx.view(-1, 1)  # (n, 1)
     positive_pairs = torch.cat((anchor_idx, close_idx), dim=1)  # (n, 2)
     positive_labels = torch.ones(n, dtype=torch.int64)  # (n, )
-    far_idx = far_idx.view(-1)  # (n * r, )
-    anchor_idx_flatten = anchor_idx.expand(-1, r).view(-1)  # (n * r, )
+    far_idx = far_idx.view(-1, 1)  # (n * r, )
+    anchor_idx_flatten = anchor_idx.expand(-1, r).view(-1, 1)  # (n * r, )
     negative_pairs = torch.cat((anchor_idx_flatten, far_idx), dim=1)  # (n * r, 2)
     negative_labels = torch.zeros(n * r, dtype=torch.int64)  # (n * r, )
     pairs = torch.cat((positive_pairs, negative_pairs), dim=0)
     labels = torch.cat((positive_labels, negative_labels), dim=0)
-    return pairs, labels
+    return pairs, labels, close_distance, far_distance
 
 
 class SiameseDataSet(Dataset):

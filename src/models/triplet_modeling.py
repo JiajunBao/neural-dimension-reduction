@@ -9,9 +9,8 @@ import pandas as pd
 from torch.utils.data import DataLoader, Dataset
 
 
-
 def far_func(sorted_dist: torch.tensor, indices: torch.tensor):
-    return sorted_dist[:, -1], indices[:, -1]
+    return sorted_dist[:, -1].view(-1, 1), indices[:, -1].view(-1, 1)
 
 
 def calculate_distance(x, far_fn):
