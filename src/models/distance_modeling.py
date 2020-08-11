@@ -6,6 +6,8 @@ from torch.nn import functional as F
 import pandas as pd
 from torch.utils.data import Dataset
 
+from tqdm.auto import tqdm
+
 STABLE_FACTOR = 1e-8
 
 
@@ -30,7 +32,7 @@ def calculate_distance(x, far_fn):
         num_iter = x.shape[0] // batch_size + 1
         anchor_idx_list, close_idx_list, far_idx_list = list(), list(), list()
         close_distance_list, far_distance_list = list(), list()
-        for i in torch.arange(num_iter):
+        for i in tqdm(torch.arange(num_iter), desc='create triplets'):
             batch_x = x[i * batch_size: (i + 1) * batch_size, :].to(device)
 
             dist = torch.cdist(x1=batch_x, x2=x_device, p=2)  # (n, n)
