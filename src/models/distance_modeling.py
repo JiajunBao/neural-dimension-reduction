@@ -15,15 +15,41 @@ def far_func(sorted_dist: torch.tensor, indices: torch.tensor):
 
 def calculate_distance(x, far_fn):
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+    batch_size = 2000
     x_device = x.to(device)
-    # TODO: we first assume memory fits in memory. Later, we can process the data in batches.
-    dist = torch.cdist(x1=x_device, x2=x_device, p=2)  # (n, n)
-    sorted_dist, indices = torch.sort(dist, dim=1, descending=False)
-    sorted_dist, indices = sorted_dist.cpu(), indices.cpu()
-    anchor_idx = torch.arange(x.shape[0])  # (n,)
-    # the 0-th column is the distance to oneself
-    close_distance, close_idx = sorted_dist[:, 1], indices[:, 1]  # (n,)
-    far_distance, far_idx = far_fn(sorted_dist, indices)  # (n, r)
+    if x.shape[0] * x.shape[1] < batch_size * 200:  # direct computes the whole matrix
+        # TODO: we first assume memory fits in memory. Later, we can process the data in batches.
+        dist = torch.cdist(x1=x_device, x2=x_device, p=2)  # (n, n)
+        sorted_dist, indices = torch.sort(dist, dim=1, descending=False)
+        sorted_dist, indices = sorted_dist.cpu(), indices.cpu()
+        anchor_idx = torch.arange(x.shape[0])  # (n,)
+        # the 0-th column is the distance to oneself
+        close_distance, close_idx = sorted_dist[:, 1], indices[:, 1]  # (n,)
+        far_distance, far_idx = far_fn(sorted_dist, indices)  # (n, r)
+    else:
+        num_iter = x.shape[0] // batch_size + 1
+        anchor_idx_list, close_idx_list, far_idx_list = list(), list(), list()
+        close_distance_list, far_distance_list = list(), list()
+        for i in torch.arange(num_iter):
+            batch_x = x[i * batch_size: (i + 1) * batch_size, :].to(device)
+
+            dist = torch.cdist(x1=batch_x, x2=x_device, p=2)  # (n, n)
+            sorted_dist, indices = torch.sort(dist, dim=1, descending=False)
+            sorted_dist, indices = sorted_dist.cpu(), indices.cpu()
+            anchor_idx = torch.arange(x.shape[0])  # (n,)
+            # the 0-th column is the distance to oneself
+            close_distance, close_idx = sorted_dist[:, 1], indices[:, 1]  # (n,)
+            far_distance, far_idx = far_fn(sorted_dist, indices)  # (n, r)
+            anchor_idx_list.append(anchor_idx)
+            close_idx_list.append(close_idx)
+            far_idx_list.append(far_idx)
+            close_distance_list.append(close_distance)
+            far_distance_list.append(far_distance)
+        anchor_idx = torch.cat(anchor_idx_list, dim=0)
+        close_idx = torch.cat(close_idx_list, dim=0)
+        far_idx = torch.cat(far_idx_list, dim=0)
+        close_distance = torch.cat(close_distance_list, dim=0)
+        far_distance = torch.cat(far_distance_list, dim=0)
     return anchor_idx, close_idx, far_idx, close_distance, far_distance
 
 
@@ -119,11 +145,11 @@ class Surveyor(nn.Module):
         logits = F.softmax(out, dim=1)
         return logits, p
 
-    def forward(self, x1, x2, q, labels=None, lam=1):
+    def forward(self, x1, x2, q=None, labels=None, lam=1):
         out1 = self.encode_batch(x1)
         out2 = self.encode_batch(x2)
         logits, p = self.decode_batch(out1, out2)
-        if labels is not None:
+        if labels is not None and q is not None:
             loss_fn = nn.CrossEntropyLoss()
             loss = loss_fn(logits, labels) + lam * thesis_kl_div_add_mse_loss(p, q)
             return logits, p, out1, out2, loss
