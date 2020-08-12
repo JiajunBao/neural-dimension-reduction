@@ -12,7 +12,7 @@ STABLE_FACTOR = 1e-8
 
 
 def far_func(sorted_dist: torch.tensor, indices: torch.tensor):
-    return sorted_dist[:, -1].view(-1, 1), indices[:, -1].view(-1, 1)
+    return sorted_dist[:, 1].view(-1, 1), indices[:, 1].view(-1, 1)
 
 
 def calculate_distance(x, far_fn):
@@ -79,9 +79,9 @@ class SurveyorDataSet(Dataset):
         self.q = q
 
     @classmethod
-    def from_df(cls, path_to_dataframe):
+    def from_df(cls, path_to_dataframe, func=far_func):
         data = torch.from_numpy(pd.read_csv(path_to_dataframe, header=None).to_numpy()).to(torch.float32)
-        pairs, labels, close_distance, far_distance = make_pairs(data, far_func)
+        pairs, labels, close_distance, far_distance = make_pairs(data, func)
         q = thesis_input_inverse_similarity(data[pairs[:, 0]],
                                             data[pairs[:, 1]],
                                             close_distance[pairs[:, 0]],
