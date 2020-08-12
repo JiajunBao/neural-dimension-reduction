@@ -201,8 +201,8 @@ class RetrieveSystem(object):
                 p_distances.append(p.item())
         cls_distances = torch.tensor(cls_distances)
         p_distances = torch.tensor(p_distances)
-        _, cls_nn_idx = cls_distances.sort()
-        _, p_nn_idx = p_distances.sort()
+        _, cls_nn_idx = cls_distances.sort(descending=True)
+        _, p_nn_idx = p_distances.sort(descending=True)
         return cls_nn_idx[:topk], p_nn_idx[:topk]
 
     def retrieve_corpus(self, corpus, block_list, database):
