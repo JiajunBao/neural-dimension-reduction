@@ -188,16 +188,16 @@ class RetrieveSystem(object):
         self.distance_measure = distance_measure
 
     def retrieve_query(self, query, ignore_idx, x_embedded, x_idx, topk=20):
-        query_device = query.view(-1, 1).to(self.device)
+        query_device = query.view(1, -1).to(self.device)
         cls_distances = list()
         p_distances = list()
         with torch.no_grad():
             for i, x in zip(x_idx, x_embedded):
                 if ignore_idx is not None and i == ignore_idx:
                     continue
-                x_device = x.view(-1, 1).to(self.device)
+                x_device = x.view(1, -1).to(self.device)
                 logits, p = self.distance_measure.decode_batch(query_device, x_device)
-                cls_distances.append(logits[1].item())
+                cls_distances.append(logits[:, 1].item())
                 p_distances.append(p.item())
         cls_distances = torch.tensor(cls_distances)
         p_distances = torch.tensor(p_distances)
@@ -208,10 +208,10 @@ class RetrieveSystem(object):
     def retrieve_corpus(self, corpus, block_list, database):
         cls_pred_nn_top, p_distances_nn_top = list(), list()
         x_idx = range(database.shape[0])
-        for ignore_idx, query in zip(block_list, corpus):
+        for ignore_idx, query in tqdm(zip(block_list, corpus), total=len(block_list), desc='retrieve each query'):
             cls_distances, p_distances = self.retrieve_query(query, ignore_idx, database, x_idx, 20)
-            cls_pred_nn_top.append(cls_distances)
-            p_distances_nn_top.append(p_distances)
+            cls_pred_nn_top.append(cls_distances.view(1, -1))
+            p_distances_nn_top.append(p_distances.view(1, -1))
         cls_pred_nn_top = torch.cat(cls_pred_nn_top, dim=0)
         p_distances_nn_top = torch.cat(p_distances_nn_top, dim=0)
         return cls_pred_nn_top, p_distances_nn_top
