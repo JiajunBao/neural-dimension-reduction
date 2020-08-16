@@ -13,12 +13,12 @@ STABLE_FACTOR = 1e-8
 
 def far_func(sorted_dist: torch.tensor, indices: torch.tensor):
     mid = sorted_dist.shape[1] // 2
-    return sorted_dist[:, mid:].view(-1, 1), indices[:, mid:].view(-1, 1)
+    return sorted_dist[:, mid:].reshape(-1, 1), indices[:, mid:].reshape(-1, 1)
 
 
 def close_func(sorted_dist: torch.tensor, indices: torch.tensor):
     mid = sorted_dist.shape[1] // 2
-    return sorted_dist[:, :mid].view(-1, 1), indices[:, :mid].view(-1, 1)
+    return sorted_dist[:, :mid].reshape(-1, 1), indices[:, :mid].reshape(-1, 1)
 
 
 def calculate_distance(x, close_fn, far_fn):
