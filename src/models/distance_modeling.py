@@ -5,20 +5,71 @@ from torch import nn
 from torch.nn import functional as F
 import pandas as pd
 from torch.utils.data import Dataset, TensorDataset, DataLoader
-
+from pathlib import Path
 from tqdm.auto import tqdm
 
 STABLE_FACTOR = 1e-8
 
 
-def far_func(sorted_dist: torch.tensor, indices: torch.tensor):
-    mid = sorted_dist.shape[1] // 2
-    return sorted_dist[:, mid:].reshape(-1, 1), indices[:, mid:].reshape(-1, 1)
+class PairSelector:
+    def __init__(self, pos_ratio, neg_ratio):
+        self.pos_ratio = pos_ratio
+        self.neg_ratio = neg_ratio
+
+    def select(self, sorted_dist: torch.tensor, indices: torch.tensor):
+        mid = sorted_dist.shape[1] // 2
+        pos_dist, pos_indices = sorted_dist[:, :mid].reshape(-1, 1), indices[:, :mid].reshape(-1, 1)
+        neg_dist, neg_indices = sorted_dist[:, mid:].reshape(-1, 1), indices[:, mid:].reshape(-1, 1)
+        return pos_dist, pos_indices, neg_dist, neg_indices
 
 
-def close_func(sorted_dist: torch.tensor, indices: torch.tensor):
-    mid = sorted_dist.shape[1] // 2
-    return sorted_dist[:, :mid].reshape(-1, 1), indices[:, :mid].reshape(-1, 1)
+class SurveyorChunkDataSet(Dataset):
+    def __init__(self, data, cache_dir, batch_size, pair_selector):
+        self.data = data
+        self.txt = "batch.{i}.pt"
+        self.pair_selector = pair_selector
+        self.batch_size = batch_size
+        self.cache_dir = cache_dir
+
+    @staticmethod
+    def preprocess_dataset(path_to_dataframe, cache_dir, batch_size):
+        device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+        x = torch.from_numpy(pd.read_csv(path_to_dataframe, header=None).to_numpy()).to(torch.float32)
+        num_iter = x.shape[0] // batch_size + 1
+        x_device = x.to(device)
+
+        Path(cache_dir).mkdir(exist_ok=True, parents=True)
+        file_idx = list()
+        for i in tqdm(torch.arange(num_iter), desc='compute neighbor and distance'):
+            batch_x = x[i * batch_size: (i + 1) * batch_size, :].to(device)
+            dist = torch.cdist(x1=batch_x, x2=x_device, p=2)  # (n, n)
+            sorted_dist, indices = torch.sort(dist, dim=1, descending=False)
+            sorted_dist, indices = sorted_dist.cpu(), indices.cpu()  # pop the element itself
+            target_idxes = torch.arange(i * batch_size, (i + 1) * batch_size)
+            assert torch.equal(indices[:, 0], target_idxes), \
+                'one closest element is not oneself'  # (n,)
+            file_name = f'batch.{i}.pt'
+            torch.save(
+                {
+                    'target_idxes': target_idxes,
+                    'sorted_dist': sorted_dist[:, 1:],
+                    'indices': indices[:, 1:]
+                }, cache_dir / file_name)
+            file_idx.append(file_name)
+        torch.save(file_idx, cache_dir / 'batch.indexes.pt')
+        return cache_dir, batch_size
+
+    @classmethod
+    def from_dataset(cls, path_to_tensor):
+        return torch.load(path_to_tensor)
+
+    # def __len__(self):
+    #     return (self.pair_selector.pos_ratio + self.pair_selector.neg_ratio) * len(self.data)
+
+    # def __getitem__(self, idx):
+    #     i = idx // self.batch_size
+    #     batch = torch.load(self.cache_dir / self.txt.format(i=i))
+    #     return batch['target_idxes'], batch['sorted_dist']
 
 
 def calculate_distance(x, close_fn, far_fn):
