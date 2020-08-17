@@ -5,23 +5,17 @@ from torch import nn
 from torch.nn import functional as F
 import pandas as pd
 from torch.utils.data import Dataset, TensorDataset, DataLoader
-from pathlib import Path
+
 from tqdm.auto import tqdm
 
 STABLE_FACTOR = 1e-8
 
 
-def close_func(sorted_dist: torch.tensor, indices: torch.tensor):
-    interested_topk = 20
-    return sorted_dist[:, :interested_topk].reshape(-1, 1), indices[:, :interested_topk].reshape(-1, 1)
-
-
 def far_func(sorted_dist: torch.tensor, indices: torch.tensor):
-    interested_topk = 20
-    return sorted_dist[:, -interested_topk:].reshape(-1, 1), indices[:, -interested_topk:].reshape(-1, 1)
+    return sorted_dist[:, 1].view(-1, 1), indices[:, 1].view(-1, 1)
 
 
-def calculate_distance(x, close_fn, far_fn):
+def calculate_distance(x, far_fn):
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
     batch_size = 512
     x_device = x.to(device)
@@ -29,10 +23,10 @@ def calculate_distance(x, close_fn, far_fn):
         # TODO: we first assume memory fits in memory. Later, we can process the data in batches.
         dist = torch.cdist(x1=x_device, x2=x_device, p=2)  # (n, n)
         sorted_dist, indices = torch.sort(dist, dim=1, descending=False)
-        sorted_dist, indices = sorted_dist[:, 1:].cpu(), indices[:, 1:].cpu()
+        sorted_dist, indices = sorted_dist.cpu(), indices.cpu()
         anchor_idx = torch.arange(x.shape[0])  # (n,)
         # the 0-th column is the distance to oneself
-        close_distance, close_idx = close_fn(sorted_dist, indices)  # (n, r2)
+        close_distance, close_idx = sorted_dist[:, 1], indices[:, 1]  # (n,)
         far_distance, far_idx = far_fn(sorted_dist, indices)  # (n, r)
     else:
         num_iter = x.shape[0] // batch_size + 1
@@ -43,12 +37,11 @@ def calculate_distance(x, close_fn, far_fn):
 
             dist = torch.cdist(x1=batch_x, x2=x_device, p=2)  # (n, n)
             sorted_dist, indices = torch.sort(dist, dim=1, descending=False)
-            sorted_dist, indices = sorted_dist.cpu(), indices.cpu()  # pop the element itself
+            sorted_dist, indices = sorted_dist, indices
             anchor_idx = torch.arange(i * batch_size, i * batch_size + batch_x.shape[0])  # (n,)
-            # assert torch.equal(anchor_idx, indices[:, 0])
-            sorted_dist, indices = sorted_dist[:, 1:], indices[:, 1:]  # pop the element itself
+            assert torch.equal(anchor_idx, indices[:, 0].cpu())
             # the 0-th column is the distance to oneself
-            close_distance, close_idx = close_fn(sorted_dist, indices)  # (n, r2)
+            close_distance, close_idx = sorted_dist[:, 1], indices[:, 1]  # (n,)
             far_distance, far_idx = far_fn(sorted_dist, indices)  # (n, r)
             anchor_idx_list.append(anchor_idx.cpu())
             close_idx_list.append(close_idx.cpu())
@@ -63,15 +56,13 @@ def calculate_distance(x, close_fn, far_fn):
     return anchor_idx, close_idx, far_idx, close_distance, far_distance
 
 
-def make_pairs(x, close_fn, far_fn):
-    anchor_idx, close_idx, far_idx, close_distance, far_distance = calculate_distance(x, close_fn, far_fn)
+def make_pairs(x, far_fn):
+    anchor_idx, close_idx, far_idx, close_distance, far_distance = calculate_distance(x, far_fn)
     n, r = far_idx.shape
     anchor_idx = anchor_idx.view(-1, 1)  # (n, 1)
-
-    close_idx = close_idx.view(-1, 1)  # (n * r2, 1)
-    positive_pairs = torch.cat((anchor_idx, close_idx), dim=1)  # (n * r2, 2)
-    positive_labels = torch.ones(n, dtype=torch.int64)  # (n * r2, )
-
+    close_idx = close_idx.view(-1, 1)  # (n, 1)
+    positive_pairs = torch.cat((anchor_idx, close_idx), dim=1)  # (n, 2)
+    positive_labels = torch.ones(n, dtype=torch.int64)  # (n, )
     far_idx = far_idx.view(-1, 1)  # (n * r, )
     anchor_idx_flatten = anchor_idx.expand(-1, r).view(-1, 1)  # (n * r, )
     negative_pairs = torch.cat((anchor_idx_flatten, far_idx), dim=1)  # (n * r, 2)
@@ -89,9 +80,9 @@ class SurveyorDataSet(Dataset):
         self.q = q
 
     @classmethod
-    def from_df(cls, path_to_dataframe, pick_close=close_func, pick_far=far_func):
+    def from_df(cls, path_to_dataframe, func=far_func):
         data = torch.from_numpy(pd.read_csv(path_to_dataframe, header=None).to_numpy()).to(torch.float32)
-        pairs, labels, close_distance, far_distance = make_pairs(data, pick_close, pick_far)
+        pairs, labels, close_distance, far_distance = make_pairs(data, func)
         q = thesis_input_inverse_similarity(data[pairs[:, 0]],
                                             data[pairs[:, 1]],
                                             close_distance[pairs[:, 0]],
@@ -211,8 +202,8 @@ class RetrieveSystem(object):
                 p_distances.append(p.item())
         cls_distances = torch.tensor(cls_distances)
         p_distances = torch.tensor(p_distances)
-        _, cls_nn_idx = cls_distances.sort(descending=True)
-        _, p_nn_idx = p_distances.sort(descending=True)
+        _, cls_nn_idx = cls_distances.sort()
+        _, p_nn_idx = p_distances.sort()
         return cls_nn_idx[:topk], p_nn_idx[:topk]
 
     def retrieve_corpus(self, corpus, block_list, database):
