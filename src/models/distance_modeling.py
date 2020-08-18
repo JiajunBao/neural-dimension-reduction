@@ -68,7 +68,7 @@ def make_pairs(x, close_fn, far_fn):
     close_idx = close_idx.reshape(-1, 1)  # (n * r, 1)
 
     positive_pairs = torch.cat((anchor_idx_flatten, close_idx), dim=1)  # (n, 2)
-    positive_labels = torch.ones(n, dtype=torch.int64)  # (n, )
+    positive_labels = torch.ones(n * r, dtype=torch.int64)  # (n, )
     
     n, r = far_idx.shape
     far_idx = far_idx.reshape(-1, 1)  # (n * r, )
