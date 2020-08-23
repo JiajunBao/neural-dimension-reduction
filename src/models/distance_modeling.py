@@ -5,6 +5,7 @@ from torch import nn
 from torch.nn import functional as F
 import pandas as pd
 from torch.utils.data import Dataset
+from tqdm.auto import tqdm
 
 STABLE_FACTOR = 1e-8
 
@@ -13,29 +14,65 @@ def far_func(sorted_dist: torch.tensor, indices: torch.tensor):
     return sorted_dist[:, -1].view(-1, 1), indices[:, -1].view(-1, 1)
 
 
-def calculate_distance(x, far_fn):
+def close_func(sorted_dist: torch.tensor, indices: torch.tensor):
+    return sorted_dist[:, 1].view(-1, 1), indices[:, 1].view(-1, 1)
+
+
+def calculate_distance(x, close_fn, far_fn):
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+    batch_size = 512
     x_device = x.to(device)
-    # TODO: we first assume memory fits in memory. Later, we can process the data in batches.
-    dist = torch.cdist(x1=x_device, x2=x_device, p=2)  # (n, n)
-    sorted_dist, indices = torch.sort(dist, dim=1, descending=False)
-    sorted_dist, indices = sorted_dist.cpu(), indices.cpu()
-    anchor_idx = torch.arange(x.shape[0])  # (n,)
-    # the 0-th column is the distance to oneself
-    close_distance, close_idx = sorted_dist[:, 1], indices[:, 1]  # (n,)
-    far_distance, far_idx = far_fn(sorted_dist, indices)  # (n, r)
+    if x.shape[0] * x.shape[1] < batch_size * 200:  # direct computes the whole matrix
+        # TODO: we first assume memory fits in memory. Later, we can process the data in batches.
+        dist = torch.cdist(x1=x_device, x2=x_device, p=2)  # (n, n)
+        sorted_dist, indices = torch.sort(dist, dim=1, descending=False)
+        sorted_dist, indices = sorted_dist.cpu(), indices.cpu()
+        anchor_idx = torch.arange(x.shape[0])  # (n,)
+        # the 0-th column is the distance to oneself
+        close_distance, close_idx = close_fn(sorted_dist, indices)  # (n, r)
+        far_distance, far_idx = far_fn(sorted_dist, indices)  # (n, r)
+    else:
+        num_iter = x.shape[0] // batch_size + 1
+        anchor_idx_list, close_idx_list, far_idx_list = list(), list(), list()
+        close_distance_list, far_distance_list = list(), list()
+        for i in tqdm(torch.arange(num_iter), desc='create triplets'):
+            batch_x = x[i * batch_size: (i + 1) * batch_size, :].to(device)
+
+            dist = torch.cdist(x1=batch_x, x2=x_device, p=2)  # (n, n)
+            sorted_dist, indices = torch.sort(dist, dim=1, descending=False)
+            sorted_dist, indices = sorted_dist, indices
+            anchor_idx = torch.arange(i * batch_size, i * batch_size + batch_x.shape[0])  # (n,)
+            # assert torch.equal(anchor_idx, indices[:, 0].cpu())
+            # the 0-th column is the distance to oneself
+            close_distance, close_idx = close_fn(sorted_dist, indices)  # (n,)
+            far_distance, far_idx = far_fn(sorted_dist, indices)  # (n, r)
+            anchor_idx_list.append(anchor_idx.cpu())
+            close_idx_list.append(close_idx.cpu())
+            far_idx_list.append(far_idx.cpu())
+            close_distance_list.append(close_distance.cpu())
+            far_distance_list.append(far_distance.cpu())
+        anchor_idx = torch.cat(anchor_idx_list, dim=0)
+        close_idx = torch.cat(close_idx_list, dim=0)
+        far_idx = torch.cat(far_idx_list, dim=0)
+        close_distance = torch.cat(close_distance_list, dim=0)
+        far_distance = torch.cat(far_distance_list, dim=0)
     return anchor_idx, close_idx, far_idx, close_distance, far_distance
 
 
-def make_pairs(x, far_fn):
-    anchor_idx, close_idx, far_idx, close_distance, far_distance = calculate_distance(x, far_fn)
+
+def make_pairs(x, close_fn, far_fn):
+    anchor_idx, close_idx, far_idx, close_distance, far_distance = calculate_distance(x, close_fn, far_fn)
+    
+    n, r = close_idx.shape
+    anchor_idx_flatten = anchor_idx.reshape(-1, 1).expand(-1, r).reshape(-1, 1)  # (n * r, )
+    close_idx = close_idx.reshape(-1, 1)  # (n * r, 1)
+
+    positive_pairs = torch.cat((anchor_idx_flatten, close_idx), dim=1)  # (n, 2)
+    positive_labels = torch.ones(n * r, dtype=torch.int64)  # (n, )
+    
     n, r = far_idx.shape
-    anchor_idx = anchor_idx.view(-1, 1)  # (n, 1)
-    close_idx = close_idx.view(-1, 1)  # (n, 1)
-    positive_pairs = torch.cat((anchor_idx, close_idx), dim=1)  # (n, 2)
-    positive_labels = torch.ones(n, dtype=torch.int64)  # (n, )
-    far_idx = far_idx.view(-1, 1)  # (n * r, )
-    anchor_idx_flatten = anchor_idx.expand(-1, r).view(-1, 1)  # (n * r, )
+    far_idx = far_idx.reshape(-1, 1)  # (n * r, )
+    anchor_idx_flatten = anchor_idx.reshape(-1, 1).expand(-1, r).reshape(-1, 1)  # (n * r, )
     negative_pairs = torch.cat((anchor_idx_flatten, far_idx), dim=1)  # (n * r, 2)
     negative_labels = torch.zeros(n * r, dtype=torch.int64)  # (n * r, )
     pairs = torch.cat((positive_pairs, negative_pairs), dim=0)
@@ -51,13 +88,19 @@ class SurveyorDataSet(Dataset):
         self.q = q
 
     @classmethod
-    def from_df(cls, path_to_dataframe):
+    def from_df(cls, path_to_dataframe, close_fn=close_func, far_fn=far_func):
         data = torch.from_numpy(pd.read_csv(path_to_dataframe, header=None).to_numpy()).to(torch.float32)
-        pairs, labels, close_distance, far_distance = make_pairs(data, far_func)
-        q = thesis_input_inverse_similarity(data[pairs[:, 0]],
-                                            data[pairs[:, 1]],
-                                            close_distance[pairs[:, 0]],
-                                            close_distance[pairs[:, 1]])
+        pairs, labels, close_distance, far_distance = make_pairs(data, close_fn, far_fn)
+        if close_distance[pairs[:, 0]].shape[1] == 1:
+            q = thesis_input_inverse_similarity(data[pairs[:, 0]],
+                                                data[pairs[:, 1]],
+                                                close_distance[pairs[:, 0]].reshape(-1),
+                                                close_distance[pairs[:, 1]].reshape(-1))
+        else:
+            q = thesis_input_inverse_similarity(data[pairs[:, 0]],
+                                                data[pairs[:, 1]],
+                                                close_distance[pairs[:, 0], 0].reshape(-1),
+                                                close_distance[pairs[:, 1], 0].reshape(-1))
         return cls(data, pairs, labels, q)
 
     @classmethod
@@ -151,3 +194,47 @@ def thesis_kl_div_add_mse_loss(p, q, lam=1):
     :return: torch.tensor of the shape (,)
     """
     return torch.sum(p * torch.log(p / q)) + lam * torch.sum((p - q) ** 2)
+
+class RetrieveSystem(object):
+    def __init__(self, distance_measure):
+        self.device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+        distance_measure = distance_measure.to(self.device)
+        self.distance_measure = distance_measure
+
+    def retrieve_query(self, query, ignore_idx, x_embedded, x_idx, topk=20):
+        query_device = query.reshape(1, -1).to(self.device)
+        cls_distances = list()
+        p_distances = list()
+        with torch.no_grad():
+            for i, x in zip(x_idx, x_embedded):
+                if ignore_idx is not None and i == ignore_idx:
+                    continue
+                x_device = x.reshape(1, -1).to(self.device)
+                logits, p = self.distance_measure.decode_batch(query_device, x_device)
+                cls_distances.append(logits[:, 1].item())
+                p_distances.append(p.item())
+        cls_distances = torch.tensor(cls_distances)
+        p_distances = torch.tensor(p_distances)
+        _, cls_nn_idx = cls_distances.sort(descending=True)
+        _, p_nn_idx = p_distances.sort(descending=True)
+        return cls_nn_idx[:topk], p_nn_idx[:topk]
+
+    def retrieve_corpus(self, corpus, block_list, database):
+        cls_pred_nn_top, p_distances_nn_top = list(), list()
+        x_idx = range(database.shape[0])
+        for ignore_idx, query in tqdm(zip(block_list, corpus), total=len(block_list), desc='retrieve each query'):
+            cls_distances, p_distances = self.retrieve_query(query, ignore_idx, database, x_idx, 20)
+            cls_pred_nn_top.append(cls_distances.reshape(1, -1))
+            p_distances_nn_top.append(p_distances.reshape(1, -1))
+        cls_pred_nn_top = torch.cat(cls_pred_nn_top, dim=0)
+        p_distances_nn_top = torch.cat(p_distances_nn_top, dim=0)
+        return cls_pred_nn_top, p_distances_nn_top
+
+    def recall(self, pred, gold, at_n=None):
+        results = dict()
+        if at_n is None:
+            at_n = [1, 5, 10, 20]
+        for n in at_n:
+            recall = float((pred[:, :n] == gold.reshape(-1, 1)).sum().item()) / len(gold)
+            results[f'recall@{n}'] = recall
+        return results
