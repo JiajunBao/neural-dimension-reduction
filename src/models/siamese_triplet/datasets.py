@@ -92,7 +92,7 @@ class SiameseSynthesis(Dataset):
         assert n == n2 and n == n3, print(n, n2, n3)
 
     def __len__(self):
-        n = self.anchor_idx.shape
+        n, = self.anchor_idx.shape
         _, d1 = self.close_idx.shape
         _, d2 = self.far_idx.shape
         return n * (d1 + d2)
