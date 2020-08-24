@@ -89,7 +89,7 @@ class SiameseSynthesis(Dataset):
         n2, d1 = self.close_idx.shape
         n3, d2 = self.far_idx.shape
         n = self.anchor_idx.shape
-        assert n == n2 and n == n3
+        assert n == n2 and n == n3, print(n, n2, n3)
 
     def __len__(self):
         n = self.anchor_idx.shape
