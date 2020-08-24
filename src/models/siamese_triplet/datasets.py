@@ -81,8 +81,7 @@ class SiameseMNIST(Dataset):
 
 
 class SiameseSynthesis(Dataset):
-    def __init__(self, path_to_df: Path, is_train: bool):
-        self.is_train = is_train
+    def __init__(self, path_to_df: Path):
         data = torch.load(path_to_df)
         self.anchor_idx = data['anchor_idx']  # (n)
         self.close_idx = data['close_idx']  # (n, d1)
