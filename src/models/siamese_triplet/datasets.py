@@ -112,6 +112,38 @@ class SiameseSynthesis(Dataset):
         return (self.data[self.anchor_idx[did]].float(), self.data[target].float()), label
 
 
+class TripletSynthesis(Dataset):
+    def __init__(self, path_to_df: Path):
+        data = torch.load(path_to_df)
+        self.anchor_idx = data['anchor_idx']  # (n)
+        self.close_idx = data['close_idx']  # (n, d1)
+        self.far_idx = data['far_idx']  # (n, d2)
+        n2, d1 = self.close_idx.shape
+        n3, d2 = self.far_idx.shape
+        n, = self.anchor_idx.shape
+        assert n == n2 and n == n3, print(n, n2, n3)
+
+    def __len__(self):
+        n, = self.anchor_idx.shape
+        _, d1 = self.close_idx.shape
+        _, d2 = self.far_idx.shape
+        return n * d1 * d2
+
+    def __getitem__(self, index):
+        _, d1 = self.close_idx.shape
+        _, d2 = self.far_idx.shape
+        did = index // (d1 * d2)
+        id1 = (index % (d1 * d2)) // d1
+        id2 = index
+        if tid < d1:
+            label = 1
+            target = self.close_idx[did][tid]
+        else:
+            label = 0
+            target = self.far_idx[did][tid - d1]
+        return (self.anchor_idx[did], target), label
+
+
 class TripletMNIST(Dataset):
     """
     Train: For each sample (anchor) randomly chooses a positive and negative samples
