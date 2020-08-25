@@ -136,9 +136,9 @@ class TripletSynthesis(Dataset):
         did = index // (d1 * d2)
         id1 = (index % (d1 * d2)) // d2
         id2 = (index % (d1 * d2)) % d2
-        return (self.data[self.anchor_idx[did]],
-                self.data[self.close_idx[id1, id2]],
-                self.data[self.far_idx[id1, id2]]), []
+        return (self.data[self.anchor_idx[did]].float(),
+                self.data[self.close_idx[id1, id2]].float(),
+                self.data[self.far_idx[id1, id2]]).float(), []
 
 
 class TripletMNIST(Dataset):
