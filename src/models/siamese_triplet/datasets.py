@@ -122,6 +122,7 @@ class TripletSynthesis(Dataset):
         n3, d2 = self.far_idx.shape
         n, = self.anchor_idx.shape
         assert n == n2 and n == n3, print(n, n2, n3)
+        self.data = data
 
     def __len__(self):
         n, = self.anchor_idx.shape
@@ -134,14 +135,10 @@ class TripletSynthesis(Dataset):
         _, d2 = self.far_idx.shape
         did = index // (d1 * d2)
         id1 = (index % (d1 * d2)) // d1
-        id2 = index
-        if tid < d1:
-            label = 1
-            target = self.close_idx[did][tid]
-        else:
-            label = 0
-            target = self.far_idx[did][tid - d1]
-        return (self.anchor_idx[did], target), label
+        id2 = (index % (d1 * d2)) % d1
+        return (self.data[self.anchor_idx[did]],
+                self.data[self.close_idx[id1, id2]],
+                self.data[self.far_idx[id1, id2]]), []
 
 
 class TripletMNIST(Dataset):
