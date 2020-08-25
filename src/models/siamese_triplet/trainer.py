@@ -20,12 +20,17 @@ def fit(train_loader, val_loader, model, loss_fn, optimizer, scheduler, n_epochs
     for epoch in range(start_epoch, n_epochs):
 
         # Train stage
-        train_loss, metrics = train_epoch(train_loader, model, loss_fn, optimizer, cuda, log_interval, metrics)
+        train_loss, metrics, sub_best_model, sub_val_loss = train_epoch(train_loader, model, loss_fn, optimizer, cuda, log_interval, metrics,
+                                                                        val_loader=val_loader)
 
         message = 'Epoch: {}/{}. Train set: Average loss: {:.4f}'.format(epoch + 1, n_epochs, train_loss)
         for metric in metrics:
             message += '\t{}: {}'.format(metric.name(), metric.value())
 
+        if sub_val_loss < lowest_val_loss:
+            lowest_val_loss = sub_val_loss
+            best_model = copy.deepcopy(sub_best_model)
+        # evaluate in the end of each epoch
         val_loss, metrics = test_epoch(val_loader, model, loss_fn, cuda, metrics)
         val_loss /= len(val_loader)
 
@@ -42,14 +47,15 @@ def fit(train_loader, val_loader, model, loss_fn, optimizer, scheduler, n_epochs
         return best_model, lowest_val_loss
 
 
-def train_epoch(train_loader, model, loss_fn, optimizer, cuda, log_interval, metrics):
+def train_epoch(train_loader, model, loss_fn, optimizer, cuda, log_interval, metrics, val_loader=None):
     for metric in metrics:
         metric.reset()
 
     model.train()
     losses = []
     total_loss = 0
-
+    lowest_val_loss = float('inf')
+    best_model = None
     for batch_idx, (data, target) in enumerate(train_loader):
         target = target if len(target) > 0 else None
         if not type(data) in (tuple, list):
@@ -90,8 +96,23 @@ def train_epoch(train_loader, model, loss_fn, optimizer, cuda, log_interval, met
 
             print(message)
             losses = []
+            if val_loader:
+                val_loss, metrics = test_epoch(val_loader, model, loss_fn, cuda, metrics)
+                val_loss /= len(val_loader)
 
-    total_loss /= (batch_idx + 1)
+                message += '\nEpoch: {}/{}. Validation set: Average loss: {:.4f}'.format(epoch + 1, n_epochs,
+                                                                                         val_loss)
+                for metric in metrics:
+                    message += '\t{}: {}'.format(metric.name(), metric.value())
+
+                print(message)
+                if val_loss < lowest_val_loss:
+                    lowest_val_loss = val_loss
+                    best_model = copy.deepcopy(model)
+
+    total_loss /= len(train_loader)
+    if val_loader:
+        return total_loss, metrics, best_model, lowest_val_loss
     return total_loss, metrics
 
 
