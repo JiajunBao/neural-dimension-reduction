@@ -100,8 +100,7 @@ def train_epoch(train_loader, model, loss_fn, optimizer, cuda, log_interval, met
                 val_loss, metrics = test_epoch(val_loader, model, loss_fn, cuda, metrics)
                 val_loss /= len(val_loader)
 
-                message += '\nEpoch: {}/{}. Validation set: Average loss: {:.4f}'.format(epoch + 1, n_epochs,
-                                                                                         val_loss)
+                message += '\nValidation set: Average loss: {:.4f}'.format(val_loss)
                 for metric in metrics:
                     message += '\t{}: {}'.format(metric.name(), metric.value())
 
