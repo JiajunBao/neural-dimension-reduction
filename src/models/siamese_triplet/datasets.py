@@ -115,6 +115,7 @@ class SiameseSynthesis(Dataset):
 class TripletSynthesis(Dataset):
     def __init__(self, path_to_df: Path):
         data = torch.load(path_to_df)
+        self.data = data['data']
         self.anchor_idx = data['anchor_idx']  # (n)
         self.close_idx = data['close_idx']  # (n, d1)
         self.far_idx = data['far_idx']  # (n, d2)
@@ -122,7 +123,6 @@ class TripletSynthesis(Dataset):
         n3, d2 = self.far_idx.shape
         n, = self.anchor_idx.shape
         assert n == n2 and n == n3, print(n, n2, n3)
-        self.data = data
 
     def __len__(self):
         n, = self.anchor_idx.shape
