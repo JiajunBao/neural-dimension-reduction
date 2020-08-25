@@ -134,8 +134,8 @@ class TripletSynthesis(Dataset):
         _, d1 = self.close_idx.shape
         _, d2 = self.far_idx.shape
         did = index // (d1 * d2)
-        id1 = (index % (d1 * d2)) // d1
-        id2 = (index % (d1 * d2)) % d1
+        id1 = (index % (d1 * d2)) // d2
+        id2 = (index % (d1 * d2)) % d2
         return (self.data[self.anchor_idx[did]],
                 self.data[self.close_idx[id1, id2]],
                 self.data[self.far_idx[id1, id2]]), []
