@@ -1,6 +1,6 @@
 import torch
 import numpy as np
-
+import copy
 
 def fit(train_loader, val_loader, model, loss_fn, optimizer, scheduler, n_epochs, cuda, log_interval, metrics=[],
         start_epoch=0):
@@ -15,7 +15,8 @@ def fit(train_loader, val_loader, model, loss_fn, optimizer, scheduler, n_epochs
     """
     for epoch in range(0, start_epoch):
         scheduler.step()
-
+    lowest_val_loss = float('inf')
+    best_model = None
     for epoch in range(start_epoch, n_epochs):
 
         # Train stage
@@ -34,7 +35,11 @@ def fit(train_loader, val_loader, model, loss_fn, optimizer, scheduler, n_epochs
             message += '\t{}: {}'.format(metric.name(), metric.value())
 
         print(message)
+        if val_loss < lowest_val_loss:
+            lowest_val_loss = val_loss
+            best_model = copy.deepcopy(model)
         scheduler.step()
+        return best_model, lowest_val_loss
 
 
 def train_epoch(train_loader, model, loss_fn, optimizer, cuda, log_interval, metrics):
