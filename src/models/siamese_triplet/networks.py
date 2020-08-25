@@ -1,3 +1,4 @@
+from collections import OrderedDict
 import torch.nn as nn
 import torch.nn.functional as F
 
@@ -5,22 +6,31 @@ import torch.nn.functional as F
 class EmbeddingNet(nn.Module):
     def __init__(self):
         super(EmbeddingNet, self).__init__()
-        self.convnet = nn.Sequential(nn.Conv2d(1, 32, 5), nn.PReLU(),
-                                     nn.MaxPool2d(2, stride=2),
-                                     nn.Conv2d(32, 64, 5), nn.PReLU(),
-                                     nn.MaxPool2d(2, stride=2))
-
-        self.fc = nn.Sequential(nn.Linear(64 * 4 * 4, 256),
-                                nn.PReLU(),
-                                nn.Linear(256, 256),
-                                nn.PReLU(),
-                                nn.Linear(256, 2)
-                                )
+        self.fc = nn.Sequential(
+            OrderedDict([
+                ('bn0', nn.BatchNorm1d(200)),
+                ('relu0', nn.ReLU(inplace=True)),
+                ('fc0', nn.Linear(200, 500)),
+                ('bn1', nn.BatchNorm1d(500)),
+                ('relu1', nn.ReLU(inplace=True)),
+                ('fc1', nn.Linear(500, 100)),
+                ('bn2', nn.BatchNorm1d(100)),
+                ('relu2', nn.ReLU(inplace=True)),
+                ('fc2', nn.Linear(100, 20)),
+                ('bn3', nn.BatchNorm1d(20)),
+                ('relu3', nn.ReLU(inplace=True)),
+                ('fc3', nn.Linear(20, 20)),
+                ('bn4', nn.BatchNorm1d(20)),
+                ('relu4', nn.ReLU(inplace=True)),
+                ('fc4', nn.Linear(20, 20)),
+                ('bn5', nn.BatchNorm1d(20)),
+                ('relu5', nn.ReLU(inplace=True)),
+                ('fc5', nn.Linear(20, 20)),
+            ])
+        )
 
     def forward(self, x):
-        output = self.convnet(x)
-        output = output.view(output.size()[0], -1)
-        output = self.fc(output)
+        output = self.fc(x)
         return output
 
     def get_embedding(self, x):
