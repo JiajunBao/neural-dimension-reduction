@@ -37,7 +37,7 @@ def val_one_epoch(val_loader, model, device):
             embedded_x = model.get_embedding(x_device)
             dist = torch.cdist(x1=embedded_x, x2=embedded_x, p=2)  # (n, n)
             sorted_dist, indices = torch.sort(dist, dim=1, descending=False)
-            loss = criterion(sorted_dist, sim)
+            loss = criterion(sorted_dist, sim_device)
             val_kl_loss += loss.item()
     return val_kl_loss / len(val_loader)
 
