@@ -1,11 +1,12 @@
 import torch
+from tqdm.auto import tqdm
 
 
 def level_grading(sorted_indexes: torch.tensor, k: int):
     res = torch.ones_like(sorted_indexes)
     n = sorted_indexes.shape[0]
     res[:, 0] = -1
-    for i in range(n):
+    for i in tqdm(range(n)):
         single_idxs = list()
         mutual_idxs = list()
         for j in range(1, k + 1):
