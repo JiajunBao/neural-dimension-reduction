@@ -54,6 +54,7 @@ def calculate_distance(x, close_fn=close_func, far_fn=far_func):
 
 
 def level_grading(sorted_indexes: torch.tensor, k: int):
+    # the first column of sorted_indexes is oneself.
     res = torch.ones_like(sorted_indexes)
     n = sorted_indexes.shape[0]
     res[:, 0] = -1

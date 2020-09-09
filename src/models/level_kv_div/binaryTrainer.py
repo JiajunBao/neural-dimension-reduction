@@ -1,7 +1,20 @@
 import torch
 from torch import nn
+from torch.utils.data import Dataset
 import copy
 # from torch.nn import KLDivLoss
+
+import pandas as pd
+
+
+def get_dataset(raw_path, sim_path):
+    t = torch.from_numpy(pd.read_csv(raw_path, header=None).to_numpy()).float()
+    sim = torch.load(sim_path, 'cpu').float()
+
+    return
+
+class MyDataset(Dataset):
+    def __init__(self, t, sim):
 
 
 class TriMarginLoss:
