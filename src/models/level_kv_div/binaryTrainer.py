@@ -61,8 +61,7 @@ def train_one_epoch(train_loader, model, optimizer, verbose, device):
     for i, batch in enumerate(train_loader):
         x1, x2, label = batch
         x1_device, x2_device = x1.to(device), x2.to(device)
-        output1 = model(x1_device)
-        output2 = model(x2_device)
+        output1, output2 = model(x1_device, x2_device)
         loss, dist = criterion.forward(output1, output2, label.to(device))
 
         dist[dist <= 1] = -1
@@ -91,8 +90,7 @@ def val_one_epoch(val_loader, model, device):
         for i, batch in enumerate(val_loader):
             x1, x2, label = batch
             x1_device, x2_device = x1.to(device), x2.to(device)
-            output1 = model(x1_device)
-            output2 = model(x2_device)
+            output1, output2 = model(x1_device, x2_device)
             loss, dist = criterion.forward(output1, output2, label.to(device))
             dist[dist <= 1] = -1
             dist[dist >= 3 & dist <= 4] = 0
