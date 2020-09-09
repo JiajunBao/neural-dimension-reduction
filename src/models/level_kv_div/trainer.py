@@ -42,7 +42,7 @@ def val_one_epoch(val_loader, model, device):
     return val_kl_loss / len(val_loader)
 
 
-def train_with_eval(train_loader, val_loader, model, optimizer, num_epoches, verbose, device):
+def train_with_eval(train_loader, val_loader, model, optimizer, num_epoches, log_epoch, verbose, device):
     best_model = None
     best_avg_val_kl_loss = float('inf')
     for epoch_idx in range(1, num_epoches + 1):
@@ -51,7 +51,7 @@ def train_with_eval(train_loader, val_loader, model, optimizer, num_epoches, ver
         if avg_val_kl_loss > best_avg_val_kl_loss:
             best_avg_val_kl_loss = avg_val_kl_loss
             best_model = copy.deepcopy(model.cpu())
-        if verbose and (epoch_idx) % 40 == 0:
+        if verbose and (epoch_idx) % log_epoch == 0:
             print(f'epoch [{epoch_idx}]/[{num_epoches}] training loss: {avg_loss:.4f} '
                   f'avg_val_kl_loss: {avg_val_kl_loss:.4f} ')
     return best_avg_val_kl_loss, best_model, model
