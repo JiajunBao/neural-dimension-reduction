@@ -15,7 +15,7 @@ class SparseDataset(Dataset):
     def __init__(self, x_path, label_path):
         x = torch.from_numpy(pd.read_csv(x_path, header=None).to_numpy()).float()
         label_matrix = torch.load(label_path, 'cpu').float()
-        assert x.shape[0] == label_matrix[0], f'inconsistent size {x.shape[0]} vs {label_matrix[0]} .'
+        assert x.shape[0] == label_matrix[0], f'inconsistent size {x.shape[0]} vs {label_matrix.shape[0]} .'
         data = list()
         for i, vec in enumerate(label_matrix.shape[0]):
             for j, label in enumerate(vec):
