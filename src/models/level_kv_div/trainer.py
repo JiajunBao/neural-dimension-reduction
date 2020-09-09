@@ -1,13 +1,17 @@
 import torch
 from torch import nn
 import copy
-from torch.nn import KLDivLoss
+# from torch.nn import KLDivLoss
+
+
+def my_KL_divegence(output_sim, input_sim):
+    return (input_sim * (input_sim / output_sim).log()).mean()
 
 
 def train_one_epoch(train_loader, model, optimizer, verbose, device):
     model = model.to(device)
     model.train()
-    criterion = KLDivLoss('mean')
+    # criterion = KLDivLoss('mean')
     loss_sum = 0.
     for i, batch in enumerate(train_loader):
         x, sim = batch
@@ -15,7 +19,7 @@ def train_one_epoch(train_loader, model, optimizer, verbose, device):
         embedded_x = model.get_embedding(x_device)
         dist = torch.cdist(x1=embedded_x, x2=embedded_x, p=2)  # (n, n)
         sorted_dist, indices = torch.sort(dist, dim=1, descending=False)
-        loss = criterion(sorted_dist, sim_device)
+        loss = my_KL_divegence(sorted_dist, sim_device)
 
         model.zero_grad()  # reset gradient
         loss.backward()
@@ -28,7 +32,7 @@ def train_one_epoch(train_loader, model, optimizer, verbose, device):
 
 def val_one_epoch(val_loader, model, device):
     model.eval()
-    criterion = KLDivLoss('mean')
+    # criterion = KLDivLoss('mean')
     val_kl_loss = 0.
     with torch.no_grad():
         for i, batch in enumerate(val_loader):
@@ -37,7 +41,7 @@ def val_one_epoch(val_loader, model, device):
             embedded_x = model.get_embedding(x_device)
             dist = torch.cdist(x1=embedded_x, x2=embedded_x, p=2)  # (n, n)
             sorted_dist, indices = torch.sort(dist, dim=1, descending=False)
-            loss = criterion(sorted_dist, sim_device)
+            loss = my_KL_divegence(sorted_dist, sim_device)
             val_kl_loss += loss.item()
     return val_kl_loss / len(val_loader)
 
