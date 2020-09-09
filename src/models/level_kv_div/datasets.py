@@ -4,8 +4,8 @@ import pandas as pd
 
 
 def get_dataset(raw_path, sim_path):
-    t = torch.from_numpy(pd.read_csv(raw_path, header=None).to_numpy()).double()
-    sim = torch.load(sim_path, 'cpu').double()
+    t = torch.from_numpy(pd.read_csv(raw_path, header=None).to_numpy()).float()
+    sim = torch.load(sim_path, 'cpu').float()
     return TensorDataset(t, sim)
 
 
