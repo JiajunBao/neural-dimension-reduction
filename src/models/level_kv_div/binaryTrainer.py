@@ -7,14 +7,28 @@ import copy
 import pandas as pd
 
 
-def get_dataset(raw_path, sim_path):
-    t = torch.from_numpy(pd.read_csv(raw_path, header=None).to_numpy()).float()
-    sim = torch.load(sim_path, 'cpu').float()
+def get_dataset(x_path, label_path):
+    return SparseDataset(x_path, label_path)
 
-    return
 
-class MyDataset(Dataset):
-    def __init__(self, t, sim):
+class SparseDataset(Dataset):
+    def __init__(self, x_path, label_path):
+        x = torch.from_numpy(pd.read_csv(x_path, header=None).to_numpy()).float()
+        label_matrix = torch.load(label_path, 'cpu').float()
+        assert x.shape[0] == label_matrix[0], f'inconsistent size {x.shape[0]} vs {label_matrix[0]} .'
+        data = list()
+        for i, vec in enumerate(label_matrix.shape[0]):
+            for j, label in enumerate(vec):
+                data.append((i, j, label))
+        self.data = data
+        self.x = x
+
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, idx):
+        id1, id2, label = self.data[idx]
+        return self.x[id1], self.x[id2], label
 
 
 class TriMarginLoss:
