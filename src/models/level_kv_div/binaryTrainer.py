@@ -17,19 +17,15 @@ class SparseDataset(Dataset):
         label_matrix = torch.load(label_path, 'cpu').float()
         assert x.shape[0] == label_matrix.shape[0], f'inconsistent size {x.shape[0]} vs {label_matrix.shape[0]} .'
         data = list()
-        count1, count0, countn1 = 0, 0, 0
         for i, vec in enumerate(label_matrix):
             tmp_pos_data, tmp_neg_data = list(), list()
             for j, label in enumerate(vec):
                 if label.item() == 1.:
                     tmp_neg_data.append((i, j, label.item(),))
-                    count1 += 1
                 elif label.item() == 0.:
                     tmp_pos_data.append((i, j, label.item(),))
-                    count0 += 1
                 elif label.item() == -1.:
                     tmp_pos_data.append((i, j, label.item(),))
-                    countn1 += 1
                 else:
                     raise NotImplemented
             random.shuffle(tmp_neg_data)
@@ -37,6 +33,14 @@ class SparseDataset(Dataset):
         self.data = data
         self.x = x
         print(f'{label_matrix.shape[0]} points {len(self.data)} data')
+        count1, count0, countn1 = 0, 0, 0
+        for _, _, l in data:
+            if l == 1.:
+                count1 += 1
+            elif l == 0.:
+                count0 += 1
+            elif l == -1.:
+                countn1 += 1
         print(f'mutual negihbors: {countn1}, one-direction neighbor: {count0}, not neighbor: {count1}')
 
     def __len__(self):
@@ -48,7 +52,7 @@ class SparseDataset(Dataset):
 
 
 class TriMarginLoss:
-    def __init__(self, m1, m2, m3, m4, reduction='mean'):
+    def __init__(self, m1, m2, m3, m4, reduction):
         self.m1, self.m2, self.m3, self.m4 = m1, m2, m3, m4
         assert reduction in {'mean', 'sum'}
         self.reduction = reduction
@@ -60,6 +64,7 @@ class TriMarginLoss:
         l3 = (y + 1) * (y - 0.5) * torch.clamp(self.m4 - dist, min=0)
         loss = l1 + l2 + l3
         if self.reduction == 'sum':
+            print(self.reduction)
             return loss.sum(), dist
         return loss.mean(), dist
 
@@ -80,13 +85,14 @@ def train_one_epoch(train_loader, model, optimizer, verbose, device):
         x1_device, x2_device = x1.to(device), x2.to(device)
         output1, output2 = model(x1_device, x2_device)
         loss, dist = criterion.forward(output1, output2, label.to(device))
-
-        dist[dist <= 1] = -1
-        dist[(dist >= 3) & (dist <= 4)] = 0
-        dist[dist >= 6] = 1
-        pred_list.append(dist.cpu())
+        
+        pred = torch.ones_like(dist)
+        pred[dist <= 1] = -1
+        pred[(dist >= 3) & (dist <= 4)] = 0
+        pred[dist >= 6] = 1
+        pred_list.append(pred.cpu())
         label_list.append(label.cpu())
-        train_correct_pred += (dist == label.to(device)).sum().item()
+        train_correct_pred += (pred == label.to(device)).sum().item()
 
         model.zero_grad()  # reset gradient
         loss.backward()
@@ -112,13 +118,17 @@ def val_one_epoch(val_loader, model, device):
             x1_device, x2_device = x1.to(device), x2.to(device)
             output1, output2 = model(x1_device, x2_device)
             loss, dist = criterion.forward(output1, output2, label.to(device))
-            dist[dist <= 1] = -1
-            dist[(dist >= 3) & (dist <= 4)] = 0
-            dist[dist >= 6] = 1
-            val_correct_pred += (dist == label.to(device)).sum().item()
-            pred_list.append(dist.cpu())
+            
+            pred = torch.ones_like(dist)
+            pred[dist <= 1] = -1
+            pred[(dist >= 3) & (dist <= 4)] = 0
+            pred[dist >= 6] = 1
+            val_correct_pred += (pred == label.to(device)).sum().item()
+            pred_list.append(pred.cpu())
             label_list.append(label.cpu())
             val_margin_loss += loss.item()
+#             if i % 20 == 0:
+#                 print(f'batch mean val loss: {val_margin_loss / (i + 1):.4f}')
     pred = torch.cat(pred_list, dim=0)
     gold = torch.cat(label_list, dim=0)
     return val_margin_loss / len(val_loader.dataset), (val_correct_pred / len(val_loader.dataset), pred, gold,)
