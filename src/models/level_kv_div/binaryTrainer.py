@@ -172,7 +172,7 @@ def train_with_eval(train_loader, val_loader, model, optimizer, num_epoches, log
     for epoch_idx in range(1, num_epoches + 1):
         avg_train_loss, (train_accuracy, train_pred, train_gold) = train_one_epoch(train_loader, model, optimizer, False, device)
         avg_val_margin_loss, (val_accuracy,  val_pred, val_gold) = val_one_epoch(val_loader, model, device)
-        if avg_val_margin_loss > best_avg_val_margin_loss:
+        if avg_val_margin_loss < best_avg_val_margin_loss:
             best_avg_val_margin_loss = avg_val_margin_loss
             best_model = copy.deepcopy(model.cpu())
         if verbose and epoch_idx % log_epoch == 0:
