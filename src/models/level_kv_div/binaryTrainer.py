@@ -13,7 +13,7 @@ def get_dataset(x_path, label_path):
 
 
 class LargeSparseDataset(Dataset):
-    def __init__(self, x_path, label_path, k):
+    def __init__(self, x_path, k):
         x = torch.from_numpy(pd.read_csv(x_path, header=None).to_numpy()).float()
         data = list()
         for i in range(x.shape[0]):
@@ -31,13 +31,16 @@ class LargeSparseDataset(Dataset):
                     pos0_list.append((i, indices[j], 0))
             for j in range(k + 2, x.shape[0]):
                 neg_list.append((i, indices[j], 1))
-
-            pass
+            data += random.shuffle(neg_list)[:len(posn1_list) + len(pos0_list)] + pos0_list + posn1_list
+        self.data = data
+        self.x = x
 
     def __len__(self):
-        pass
+        return len(self.data)
+
     def __getitem__(self, idx):
-        pass
+        i, j, label = self.data[idx]
+        return self.x[i], self.x[j], label
 
 
 class SparseDataset(Dataset):
