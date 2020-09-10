@@ -7,8 +7,37 @@ import random
 import pandas as pd
 random.seed(35)
 
+
 def get_dataset(x_path, label_path):
     return SparseDataset(x_path, label_path)
+
+
+class LargeSparseDataset(Dataset):
+    def __init__(self, x_path, label_path, k):
+        x = torch.from_numpy(pd.read_csv(x_path, header=None).to_numpy()).float()
+        data = list()
+        for i in range(x.shape[0]):
+            dist = torch.cdist(x1=x[i].view(1, -1), x2=x, p=2)[0]  # (n, n)
+            sorted_dist, indices = torch.sort(dist, descending=False)
+            posn1_list = list()
+            pos0_list = list()
+            neg_list = list()
+            for j in range(1, k + 1):
+                dist_other = torch.cdist(x1=x[indices[j]].view(1, -1), x2=x, p=2)[0]  # (n, n)
+                sorted_dist_other, indices_other = torch.sort(dist_other, descending=False)
+                if i in indices_other[1:k + 1]:
+                    posn1_list.append((i, indices[j], -1))
+                else:
+                    pos0_list.append((i, indices[j], 0))
+            for j in range(k + 2, x.shape[0]):
+                neg_list.append((i, indices[j], 1))
+
+            pass
+
+    def __len__(self):
+        pass
+    def __getitem__(self, idx):
+        pass
 
 
 class SparseDataset(Dataset):
