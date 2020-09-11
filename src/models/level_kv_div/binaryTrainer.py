@@ -136,10 +136,10 @@ def evaluate_results(x, model, k, loss_param):
         margin_measure_pred[pred_dist < m2] = 1  # is neighbor
         margin_measure_pred[pred_dist >= m2] = 0  # is not neighbor
 
-        linear_search_confusion['tp'] += (binary_gold[margin_measure_pred == 1] == 1).sum().item()
-        linear_search_confusion['tn'] += (binary_gold[margin_measure_pred == 0] == 0).sum().item()
-        linear_search_confusion['fp'] += (binary_gold[margin_measure_pred == 1] == 0).sum().item()
-        linear_search_confusion['fn'] += (binary_gold[margin_measure_pred == 0] == 1).sum().item()
+        linear_search_confusion['tp'] += (binary_gold[linear_search_pred == 1] == 1).sum().item()
+        linear_search_confusion['tn'] += (binary_gold[linear_search_pred == 0] == 0).sum().item()
+        linear_search_confusion['fp'] += (binary_gold[linear_search_pred == 1] == 0).sum().item()
+        linear_search_confusion['fn'] += (binary_gold[linear_search_pred == 0] == 1).sum().item()
 
         margin_measure_confusion['tp'] += (binary_gold[margin_measure_pred == 1] == 1).sum().item()
         margin_measure_confusion['tn'] += (binary_gold[margin_measure_pred == 0] == 0).sum().item()
