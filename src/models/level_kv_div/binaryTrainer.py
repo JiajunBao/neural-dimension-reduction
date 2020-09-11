@@ -1,11 +1,12 @@
 import torch
 from torch import nn
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, TensorDataset, DataLoader
 import copy
 # from torch.nn import KLDivLoss
 import random
 from tqdm.auto import tqdm
 import pandas as pd
+
 random.seed(35)
 
 
@@ -96,6 +97,70 @@ class SparseDataset(Dataset):
         return self.x[id1], self.x[id2], label
 
 
+def evaluate_results(x, model, k, loss_param):
+    device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+    batch_size = 512
+    model = model.to(device)
+    # did inference
+    data_loader = DataLoader(TensorDataset(x), batch_size=batch_size, pin_memory=True, shuffle=False)
+
+    embedded_x_list = list()
+    with torch.no_grad():
+        for batch_x in data_loader:
+            embedded_x = model.get_embedding(batch_x)
+            embedded_x_list.append(embedded_x.cpu())
+    embedded_x = torch.cat(embedded_x_list, dim=0)
+
+    m1, m2, m3, m4 = loss_param
+    data_loader = DataLoader(TensorDataset(x, embedded_x), batch_size=batch_size, pin_memory=True, shuffle=False)
+    margin_measure_confusion = {'tp': 0, 'tn': 0, 'fp': 0, 'fn': 0}
+    linear_search_confusion = {'tp': 0, 'tn': 0, 'fp': 0, 'fn': 0}
+    for batch_x, batch_embedded_x in tqdm(data_loader):
+        gold_dist = torch.cdist(batch_x.to(device), x.to(device), p=2).cpu()
+        gold_sorted_dist, gold_indices = torch.sort(gold_dist, dim=1, descending=False)
+        pred_dist = torch.cdist(batch_embedded_x.to(device), embedded_x.to(device), p=2).cpu()
+        pred_sorted_dist, pred_indices = torch.sort(pred_dist, dim=1, descending=False)
+        # retrieve by linear-search
+        binary_gold = torch.ones_like(gold_indices)
+        binary_gold[gold_indices[:, :k + 1]] = 1  # is neighbor
+        binary_gold[gold_indices[:, k + 1:]] = 0  # is not neighbor
+
+        linear_search_pred = torch.ones_like(gold_indices)
+        linear_search_pred[pred_indices[:, :k + 1]] = 1
+        linear_search_pred[pred_indices[:, k + 1:]] = 0
+
+        # retrieve by margin
+        margin_measure_pred = torch.ones_like(gold_indices)
+        margin_measure_pred[pred_dist < m4] = 1  # is neighbor
+        margin_measure_pred[pred_dist >= m4] = 0  # is not neighbor
+
+        linear_search_confusion['tp'] += (binary_gold[margin_measure_pred == 1] == 1).sum()
+        linear_search_confusion['tn'] += (binary_gold[margin_measure_pred == 0] == 0).sum()
+        linear_search_confusion['fp'] += (binary_gold[margin_measure_pred == 1] == 0).sum()
+        linear_search_confusion['fn'] += (binary_gold[margin_measure_pred == 0] == 1).sum()
+
+        margin_measure_confusion['tp'] += (binary_gold[margin_measure_pred == 1] == 1).sum()
+        margin_measure_confusion['tn'] += (binary_gold[margin_measure_pred == 0] == 0).sum()
+        margin_measure_confusion['fp'] += (binary_gold[margin_measure_pred == 1] == 0).sum()
+        margin_measure_confusion['fn'] += (binary_gold[margin_measure_pred == 0] == 1).sum()
+    assert margin_measure_confusion['tp'] + margin_measure_confusion['fn'] \
+        == linear_search_confusion['tp'] + linear_search_confusion['fn'], 'there is a bug'
+    assert margin_measure_confusion['tn'] + margin_measure_confusion['fp'] \
+        == linear_search_confusion['tn'] + linear_search_confusion['fp'], 'there is a bug'
+
+    def get_scores(conf):
+        tp, tn, fp, fn = conf['tp'], conf['tn'], conf['fp'], conf['fn']
+        res = dict()
+        res['accuracy'] = (tp + tn) / (tp + tn + fp + fn)
+        res['recall'] = tp / (tp + fn)
+        res['precision'] = tp / (tp + fp)
+        res['f1-score'] = 2 * res['recall'] * res['precision'] / (res['recall'] + res['precision'])
+        return res
+    margin_res = get_scores(margin_measure_confusion)
+    linear_search_res = get_scores(linear_search_confusion)
+    return (margin_res, margin_measure_confusion), (linear_search_res, linear_search_confusion)
+
+
 class TriMarginLoss:
     def __init__(self, m1, m2, m3, m4, reduction):
         self.m1, self.m2, self.m3, self.m4 = m1, m2, m3, m4
@@ -131,7 +196,7 @@ def train_one_epoch(train_loader, model, optimizer, verbose, device):
         x1_device, x2_device = x1.to(device), x2.to(device)
         output1, output2 = model(x1_device, x2_device)
         loss, dist = criterion.forward(output1, output2, label.to(device))
-        
+
         pred = torch.ones_like(dist)
         pred[dist <= 1] = -1
         pred[(dist >= 3) & (dist <= 4)] = 0
@@ -150,7 +215,8 @@ def train_one_epoch(train_loader, model, optimizer, verbose, device):
     pred = torch.cat(pred_list, dim=0)
     gold = torch.cat(label_list, dim=0)
     dist = torch.cat(dist_list, dim=0)
-    return train_margin_loss / len(train_loader.dataset), (train_correct_pred / len(train_loader.dataset), pred, gold, dist)
+    return train_margin_loss / len(train_loader.dataset), (
+    train_correct_pred / len(train_loader.dataset), pred, gold, dist)
 
 
 def val_one_epoch(val_loader, model, device):
@@ -167,7 +233,7 @@ def val_one_epoch(val_loader, model, device):
             x1_device, x2_device = x1.to(device), x2.to(device)
             output1, output2 = model(x1_device, x2_device)
             loss, dist = criterion.forward(output1, output2, label.to(device))
-            
+
             pred = torch.ones_like(dist)
             pred[dist <= 1] = -1
             pred[(dist >= 3) & (dist <= 4)] = 0
@@ -177,8 +243,8 @@ def val_one_epoch(val_loader, model, device):
             label_list.append(label.cpu())
             dist_list.append(dist.cpu())
             val_margin_loss += loss.item()
-#             if i % 20 == 0:
-#                 print(f'batch mean val loss: {val_margin_loss / (i + 1):.4f}')
+    #             if i % 20 == 0:
+    #                 print(f'batch mean val loss: {val_margin_loss / (i + 1):.4f}')
     pred = torch.cat(pred_list, dim=0)
     gold = torch.cat(label_list, dim=0)
     dist = torch.cat(dist_list, dim=0)
@@ -189,7 +255,8 @@ def train_with_eval(train_loader, val_loader, model, optimizer, num_epoches, log
     best_model = None
     best_avg_val_margin_loss = float('inf')
     for epoch_idx in range(1, num_epoches + 1):
-        avg_train_loss, (train_accuracy, train_pred, train_gold, dist) = train_one_epoch(train_loader, model, optimizer, False, device)
+        avg_train_loss, (train_accuracy, train_pred, train_gold, dist) = train_one_epoch(train_loader, model, optimizer,
+                                                                                         False, device)
         avg_val_margin_loss, (val_accuracy, val_pred, val_gold, dist) = val_one_epoch(val_loader, model, device)
         if avg_val_margin_loss < best_avg_val_margin_loss:
             best_avg_val_margin_loss = avg_val_margin_loss
@@ -200,4 +267,3 @@ def train_with_eval(train_loader, val_loader, model, optimizer, num_epoches, log
                   f'train_accuracy: {train_accuracy: .2f} '
                   f'val_accuracy: {val_accuracy: .2f} ')
     return best_avg_val_margin_loss, best_model, model
-
