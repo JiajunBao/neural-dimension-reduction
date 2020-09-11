@@ -136,15 +136,15 @@ def evaluate_results(x, model, k, loss_param):
         margin_measure_pred[pred_dist < m4] = 1  # is neighbor
         margin_measure_pred[pred_dist >= m4] = 0  # is not neighbor
 
-        linear_search_confusion['tp'] += (binary_gold[margin_measure_pred == 1] == 1).sum()
-        linear_search_confusion['tn'] += (binary_gold[margin_measure_pred == 0] == 0).sum()
-        linear_search_confusion['fp'] += (binary_gold[margin_measure_pred == 1] == 0).sum()
-        linear_search_confusion['fn'] += (binary_gold[margin_measure_pred == 0] == 1).sum()
+        linear_search_confusion['tp'] += (binary_gold[margin_measure_pred == 1] == 1).sum().item()
+        linear_search_confusion['tn'] += (binary_gold[margin_measure_pred == 0] == 0).sum().item()
+        linear_search_confusion['fp'] += (binary_gold[margin_measure_pred == 1] == 0).sum().item()
+        linear_search_confusion['fn'] += (binary_gold[margin_measure_pred == 0] == 1).sum().item()
 
-        margin_measure_confusion['tp'] += (binary_gold[margin_measure_pred == 1] == 1).sum()
-        margin_measure_confusion['tn'] += (binary_gold[margin_measure_pred == 0] == 0).sum()
-        margin_measure_confusion['fp'] += (binary_gold[margin_measure_pred == 1] == 0).sum()
-        margin_measure_confusion['fn'] += (binary_gold[margin_measure_pred == 0] == 1).sum()
+        margin_measure_confusion['tp'] += (binary_gold[margin_measure_pred == 1] == 1).sum().item()
+        margin_measure_confusion['tn'] += (binary_gold[margin_measure_pred == 0] == 0).sum().item()
+        margin_measure_confusion['fp'] += (binary_gold[margin_measure_pred == 1] == 0).sum().item()
+        margin_measure_confusion['fn'] += (binary_gold[margin_measure_pred == 0] == 1).sum().item()
     assert margin_measure_confusion['tp'] + margin_measure_confusion['fn'] \
         == linear_search_confusion['tp'] + linear_search_confusion['fn'], 'there is a bug'
     assert margin_measure_confusion['tn'] + margin_measure_confusion['fp'] \
