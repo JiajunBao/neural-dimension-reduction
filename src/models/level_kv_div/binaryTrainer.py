@@ -4,6 +4,7 @@ from torch.utils.data import Dataset
 import copy
 # from torch.nn import KLDivLoss
 import random
+from tqdm.auto import tqdm
 import pandas as pd
 random.seed(35)
 
@@ -13,10 +14,11 @@ def get_dataset(x_path, label_path):
 
 
 class LargeSparseDataset(Dataset):
-    def __init__(self, x_path, k):
+    def __init__(self, x_path, k, balanced, random_neg):
         x = torch.from_numpy(pd.read_csv(x_path, header=None).to_numpy()).float()
         data = list()
-        for i in range(x.shape[0]):
+        posn1_count, pos0_count, neg_count = 0, 0, 0
+        for i in tqdm(range(x.shape[0])):
             dist = torch.cdist(x1=x[i].view(1, -1), x2=x, p=2)[0]  # (n, n)
             sorted_dist, indices = torch.sort(dist, descending=False)
             posn1_list = list()
@@ -31,9 +33,20 @@ class LargeSparseDataset(Dataset):
                     pos0_list.append((i, indices[j], 0))
             for j in range(k + 2, x.shape[0]):
                 neg_list.append((i, indices[j], 1))
-            data += random.shuffle(neg_list)[:len(posn1_list) + len(pos0_list)] + pos0_list + posn1_list
+            if balanced:
+                if random_neg:
+                    random.shuffle(neg_list)
+                data += neg_list[:len(posn1_list) + len(pos0_list)] + pos0_list + posn1_list
+                neg_count += len(posn1_list) + len(pos0_list)
+            else:
+                data += neg_list + pos0_list + posn1_list
+                neg_count += len(neg_list)
+            posn1_count += len(posn1_list)
+            pos0_count += len(pos0_list)
         self.data = data
         self.x = x
+        print(f'{x.shape[0]} points, {len(data)} pairs')
+        print(f'mutual neighbors: {posn1_count} one-direction neighbors {pos0_count} not neighbors {neg_count}')
 
     def __len__(self):
         return len(self.data)
@@ -111,6 +124,7 @@ def train_one_epoch(train_loader, model, optimizer, verbose, device):
     train_margin_loss = 0.
     pred_list = list()
     label_list = list()
+    dist_list = list()
     train_correct_pred = 0
     for i, batch in enumerate(train_loader):
         x1, x2, label = batch
@@ -124,6 +138,7 @@ def train_one_epoch(train_loader, model, optimizer, verbose, device):
         pred[dist >= 6] = 1
         pred_list.append(pred.cpu())
         label_list.append(label.cpu())
+        dist_list.append(dist.cpu())
         train_correct_pred += (pred == label.to(device)).sum().item()
 
         model.zero_grad()  # reset gradient
@@ -134,7 +149,8 @@ def train_one_epoch(train_loader, model, optimizer, verbose, device):
             print(f'training loss: {train_margin_loss / (i + 1):.4f}')
     pred = torch.cat(pred_list, dim=0)
     gold = torch.cat(label_list, dim=0)
-    return train_margin_loss / len(train_loader.dataset), (train_correct_pred / len(train_loader.dataset), pred, gold,)
+    dist = torch.cat(dist_list, dim=0)
+    return train_margin_loss / len(train_loader.dataset), (train_correct_pred / len(train_loader.dataset), pred, gold, dist)
 
 
 def val_one_epoch(val_loader, model, device):
@@ -143,6 +159,7 @@ def val_one_epoch(val_loader, model, device):
     val_margin_loss = 0.
     pred_list = list()
     label_list = list()
+    dist_list = list()
     val_correct_pred = 0
     with torch.no_grad():
         for i, batch in enumerate(val_loader):
@@ -158,20 +175,22 @@ def val_one_epoch(val_loader, model, device):
             val_correct_pred += (pred == label.to(device)).sum().item()
             pred_list.append(pred.cpu())
             label_list.append(label.cpu())
+            dist_list.append(dist.cpu())
             val_margin_loss += loss.item()
 #             if i % 20 == 0:
 #                 print(f'batch mean val loss: {val_margin_loss / (i + 1):.4f}')
     pred = torch.cat(pred_list, dim=0)
     gold = torch.cat(label_list, dim=0)
-    return val_margin_loss / len(val_loader.dataset), (val_correct_pred / len(val_loader.dataset), pred, gold,)
+    dist = torch.cat(dist_list, dim=0)
+    return val_margin_loss / len(val_loader.dataset), (val_correct_pred / len(val_loader.dataset), pred, gold, dist)
 
 
 def train_with_eval(train_loader, val_loader, model, optimizer, num_epoches, log_epoch, verbose, device):
     best_model = None
     best_avg_val_margin_loss = float('inf')
     for epoch_idx in range(1, num_epoches + 1):
-        avg_train_loss, (train_accuracy, train_pred, train_gold) = train_one_epoch(train_loader, model, optimizer, False, device)
-        avg_val_margin_loss, (val_accuracy,  val_pred, val_gold) = val_one_epoch(val_loader, model, device)
+        avg_train_loss, (train_accuracy, train_pred, train_gold, dist) = train_one_epoch(train_loader, model, optimizer, False, device)
+        avg_val_margin_loss, (val_accuracy, val_pred, val_gold, dist) = val_one_epoch(val_loader, model, device)
         if avg_val_margin_loss < best_avg_val_margin_loss:
             best_avg_val_margin_loss = avg_val_margin_loss
             best_model = copy.deepcopy(model.cpu())
