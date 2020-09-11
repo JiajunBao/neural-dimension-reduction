@@ -10,10 +10,6 @@ import pandas as pd
 random.seed(35)
 
 
-def get_dataset(x_path, label_path):
-    return SparseDataset(x_path, label_path)
-
-
 class LargeSparseDataset(Dataset):
     def __init__(self, x_path, k, balanced, random_neg):
         x = torch.from_numpy(pd.read_csv(x_path, header=None).to_numpy()).float()
