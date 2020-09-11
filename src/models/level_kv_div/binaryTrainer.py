@@ -133,8 +133,8 @@ def evaluate_results(x, model, k, loss_param):
 
         # retrieve by margin
         margin_measure_pred = torch.ones_like(gold_indices)
-        margin_measure_pred[pred_dist < m4] = 1  # is neighbor
-        margin_measure_pred[pred_dist >= m4] = 0  # is not neighbor
+        margin_measure_pred[pred_dist < m2] = 1  # is neighbor
+        margin_measure_pred[pred_dist >= m2] = 0  # is not neighbor
 
         linear_search_confusion['tp'] += (binary_gold[margin_measure_pred == 1] == 1).sum().item()
         linear_search_confusion['tn'] += (binary_gold[margin_measure_pred == 0] == 0).sum().item()
@@ -160,7 +160,7 @@ def evaluate_results(x, model, k, loss_param):
         return res
     margin_res = get_scores(margin_measure_confusion)
     linear_search_res = get_scores(linear_search_confusion)
-    return (margin_res, margin_measure_confusion), (linear_search_res, linear_search_confusion)
+    return (margin_res, margin_measure_confusion), (linear_search_res, linear_search_confusion), (pred_dist)
 
 
 class TriMarginLoss:
