@@ -107,6 +107,7 @@ def evaluate_results(x, model, k, loss_param):
     embedded_x_list = list()
     with torch.no_grad():
         for batch_x in data_loader:
+            batch_x = batch_x[0].to(device)
             embedded_x = model.get_embedding(batch_x)
             embedded_x_list.append(embedded_x.cpu())
     embedded_x = torch.cat(embedded_x_list, dim=0)
@@ -122,12 +123,13 @@ def evaluate_results(x, model, k, loss_param):
         pred_sorted_dist, pred_indices = torch.sort(pred_dist, dim=1, descending=False)
         # retrieve by linear-search
         binary_gold = torch.ones_like(gold_indices)
-        binary_gold[gold_indices[:, :k + 1]] = 1  # is neighbor
-        binary_gold[gold_indices[:, k + 1:]] = 0  # is not neighbor
+        idx = torch.arange(gold_indices.shape[0]).view(-1, 1)
+        binary_gold[idx, gold_indices[:, :k + 1]] = 1  # is neighbor
+        binary_gold[idx, gold_indices[:, k + 1:]] = 0  # is not neighbor
 
         linear_search_pred = torch.ones_like(gold_indices)
-        linear_search_pred[pred_indices[:, :k + 1]] = 1
-        linear_search_pred[pred_indices[:, k + 1:]] = 0
+        linear_search_pred[idx, pred_indices[:, :k + 1]] = 1
+        linear_search_pred[idx, pred_indices[:, k + 1:]] = 0
 
         # retrieve by margin
         margin_measure_pred = torch.ones_like(gold_indices)
