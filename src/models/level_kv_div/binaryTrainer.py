@@ -58,7 +58,7 @@ class LargeSparseDataset(Dataset):
 
 
 class SparseDataset(Dataset):
-    def __init__(self, x_path, label_path, random_neg):
+    def __init__(self, x_path, label_path, balanced, random_neg):
         x = torch.from_numpy(pd.read_csv(x_path, header=None).to_numpy()).float()
         label_matrix = torch.load(label_path, 'cpu').float()
         assert x.shape[0] == label_matrix.shape[0], f'inconsistent size {x.shape[0]} vs {label_matrix.shape[0]} .'
@@ -76,7 +76,10 @@ class SparseDataset(Dataset):
                     raise NotImplemented
             if random_neg:
                 random.shuffle(tmp_neg_data)
-            data += tmp_neg_data[:len(tmp_pos_data)] + tmp_pos_data
+            if balanced:
+                data += tmp_neg_data[:len(tmp_pos_data)] + tmp_pos_data
+            else:
+                data += tmp_neg_data + tmp_pos_data
         self.data = data
         self.x = x
         print(f'{label_matrix.shape[0]} points {len(self.data)} data')
