@@ -241,8 +241,9 @@ def val_one_epoch(val_loader, model, device):
             pred[(dist >= 3) & (dist <= 4)] = 0
             pred[dist >= 6] = 1
             val_correct_pred += (pred == label.to(device)).sum().item()
-            print((pred == label.to(device)).sum().item())
-            print(pred, label)
+            if i == 0:
+                print((pred == label.to(device)).sum().item())
+                print(pred, label)
             pred_list.append(pred.cpu())
             label_list.append(label.cpu())
             dist_list.append(dist.cpu())
