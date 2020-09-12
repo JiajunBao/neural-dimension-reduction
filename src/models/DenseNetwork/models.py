@@ -403,7 +403,7 @@ class Solver(object):
         # recalls
         _, topk_neighbors, _ = nearest_neighbors(x=output_embeddings, top_k=max(20, top_k), device=device)
         ground_nn = anchor_idx[:, 0].unsqueeze(dim=1)
-        for r in [1, 5, 10, 20]:
+        for r in [1, 5, 10, 20, 100]:
             top_predictions = topk_neighbors[:, :r]  # (n, r)
             scores[f'Recall@{r}'] = \
                 torch.sum(top_predictions == ground_nn, dtype=torch.float).item() / ground_nn.shape[0]
