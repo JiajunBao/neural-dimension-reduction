@@ -213,7 +213,7 @@ def train_one_epoch(train_loader, model, optimizer, verbose, device):
         optimizer.step()
         train_margin_loss += loss.item()
         if verbose and i % 20 == 0:
-            print(f'training loss: {train_margin_loss / (i + 1):.4f}')
+            print(f'training loss: {train_margin_loss / (i + 1):.6f}')
     pred = torch.cat(pred_list, dim=0)
     gold = torch.cat(label_list, dim=0)
     dist = torch.cat(dist_list, dim=0)
@@ -241,10 +241,6 @@ def val_one_epoch(val_loader, model, device):
             pred[(dist >= 3) & (dist <= 4)] = 0
             pred[dist >= 6] = 1
             val_correct_pred += (pred == label.to(device)).sum().item()
-            if i == 0:
-                print((pred == label.to(device)).sum().item())
-                print(dist)
-                print(pred, label)
             pred_list.append(pred.cpu())
             label_list.append(label.cpu())
             dist_list.append(dist.cpu())
@@ -268,7 +264,7 @@ def train_with_eval(train_loader, val_loader, model, optimizer, num_epoches, log
             best_avg_val_margin_loss = avg_val_margin_loss
             best_model = copy.deepcopy(model.cpu())
         if verbose and epoch_idx % log_epoch == 0:
-            print(f'epoch [{epoch_idx}]/[{num_epoches}] training loss: {avg_train_loss:.4f} '
+            print(f'epoch [{epoch_idx}]/[{num_epoches}] training loss: {avg_train_loss:.6f} '
                   f'avg_val_margin_loss: {avg_val_margin_loss:.4f} '
                   f'train_accuracy: {train_accuracy: .2f} '
                   f'val_accuracy: {val_accuracy: .2f} ')
