@@ -21,14 +21,14 @@ class LargeSparseDataset(Dataset):
             posn1_list = list()
             pos0_list = list()
             neg_list = list()
-            for j in range(1, k + 1):
+            for j in range(0, k + 1):
                 dist_other = torch.cdist(x1=x[indices[j]].view(1, -1), x2=x, p=2)[0]  # (n, n)
                 sorted_dist_other, indices_other = torch.sort(dist_other, descending=False)
-                if i in indices_other[1:k + 1]:
+                if i in indices_other[0:k + 1]:
                     posn1_list.append((i, indices[j], -1))
                 else:
                     pos0_list.append((i, indices[j], 0))
-            for j in range(k + 2, x.shape[0]):
+            for j in range(k + 1, x.shape[0]):
                 neg_list.append((i, indices[j], 1))
             if balanced:
                 if random_neg:
@@ -280,4 +280,67 @@ def train_with_eval(train_loader, val_loader, model, optimizer, num_epoches, log
                   f'avg_val_margin_loss: {avg_val_margin_loss:.4f} '
                   f'train_accuracy: {train_accuracy: .2f} '
                   f'val_accuracy: {val_accuracy: .2f} ')
+    return best_avg_val_margin_loss, best_model, model
+
+
+def eval_in_train_one_epoch(train_loader, val_loader, model, optimizer, device):
+    model = model.to(device)
+    model.train()
+    criterion = TriMarginLoss(1, 3, 4, 6, 'mean')
+    train_margin_loss = 0.
+    pred_list = list()
+    label_list = list()
+    dist_list = list()
+    train_correct_pred = 0
+    best_val_loss, best_val_accuracy = float('inf'), 0
+    best_model = None
+    for i, batch in enumerate(train_loader):
+        x1, x2, label = batch
+        x1_device, x2_device = x1.to(device), x2.to(device)
+        output1, output2 = model(x1_device, x2_device)
+        loss, dist = criterion.forward(output1, output2, label.to(device))
+
+        pred = torch.ones_like(dist)
+        pred[dist <= 1] = -1
+        pred[(dist >= 3) & (dist <= 4)] = 0
+        pred[dist >= 6] = 1
+        pred_list.append(pred.cpu())
+        label_list.append(label.cpu())
+        dist_list.append(dist.cpu())
+        train_correct_pred += (pred == label.to(device)).sum().item()
+
+        model.zero_grad()  # reset gradient
+        loss.backward()
+        optimizer.step()
+        train_margin_loss += loss.item()
+        if i % (len(train_loader) // 10 + 1) == 0:
+            val_loss, val_accuracy = val_one_epoch(val_loader, model, device)
+            print(f'val_loss: {val_loss} val_accuracy: {val_accuracy}')
+            if val_loss < best_val_loss:
+                best_val_loss = val_loss
+                best_val_accuracy = val_accuracy
+                best_model = copy.deepcopy(model)
+    pred = torch.cat(pred_list, dim=0)
+    gold = torch.cat(label_list, dim=0)
+    dist = torch.cat(dist_list, dim=0)
+    return train_margin_loss / len(train_loader.dataset), \
+        (train_correct_pred / len(train_loader.dataset), pred, gold, dist), \
+        (best_val_loss, best_val_accuracy, best_model)
+
+
+def eval_in_train(train_loader, val_loader, model, optimizer, num_epoches, log_epoch, verbose, device):
+    best_model = None
+    best_avg_val_margin_loss = float('inf')
+    for epoch_idx in range(1, num_epoches + 1):
+        avg_train_loss, (train_accuracy, train_pred, train_gold, dist), (val_loss, val_acc, epoch_best_model) = \
+            eval_in_train_one_epoch(train_loader, val_loader, model, optimizer, device)
+
+        if val_loss < best_avg_val_margin_loss:
+            best_avg_val_margin_loss = val_loss
+            best_model = epoch_best_model
+        if verbose and epoch_idx % log_epoch == 0:
+            print(f'epoch [{epoch_idx}]/[{num_epoches}] training loss: {avg_train_loss:.6f} '
+                  f'avg_val_margin_loss: {val_loss:.4f} '
+                  f'train_accuracy: {train_accuracy: .2f} '
+                  f'val_accuracy: {val_acc: .2f} ')
     return best_avg_val_margin_loss, best_model, model
