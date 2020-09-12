@@ -171,6 +171,7 @@ def evaluate_results(x, model, k, loss_param, cache_dist):
     linear_search_res = get_scores(linear_search_confusion)
     if cache_dist:
         pred_dist_list = torch.cat(pred_dist_list, dim=0)
+        print('pred_dist is cached!')
     return (margin_res, margin_measure_confusion), (linear_search_res, linear_search_confusion), (pred_dist_list,)
 
 
