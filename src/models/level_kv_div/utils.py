@@ -74,3 +74,11 @@ def level_grading(sorted_indexes: torch.tensor, k: int):
     return original_ordered_res
 
 
+def grade_from_dist(dist: torch.tensor, k):
+    sorted_dist, indices = torch.sort(dist, descending=False)
+    return level_grading(indices, k)
+
+
+def grade_from_small_x(x: torch.tensor, k):
+    dist = torch.cdist(x1=x, x2=x, p=2)  # (n, n)
+    return grade_from_dist(dist, k)
