@@ -230,7 +230,7 @@ def train_one_epoch(train_loader, model, optimizer, verbose, device):
     gold = torch.cat(label_list, dim=0)
     dist = torch.cat(dist_list, dim=0)
     return train_margin_loss / len(train_loader.dataset), (
-    train_correct_pred / len(train_loader.dataset), pred, gold, dist)
+        train_correct_pred / len(train_loader.dataset), pred, gold, dist)
 
 
 def val_one_epoch(val_loader, model, device):
