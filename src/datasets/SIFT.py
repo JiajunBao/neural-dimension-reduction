@@ -8,9 +8,12 @@ from tqdm.auto import tqdm
 import pandas as pd
 
 import faiss
+from pathlib import  Path
 
 
 random.seed(35)
+np.random.seed(35)
+torch.manual_seed(35)
 
 
 def ivecs_read(fname):
@@ -45,9 +48,10 @@ def level_grading(sorted_indexes: torch.tensor, k: int):
 
 
 class LargeSparseDataset(Dataset):
-    def __init__(self, x_path, k, balanced, random_neg):
-        x = torch.from_numpy(fvecs_read(x_path))
+    def __init__(self, x, k, balanced, random_neg):
         # compute the actual nearest neighbor
+        self.k = k
+        self.balanced, self.random_neg = balanced, random_neg
         n, d = x.shape
         index = faiss.IndexFlatL2(d)  # build the index
         index.add(x)  # add vectors to the index
@@ -93,5 +97,22 @@ class LargeSparseDataset(Dataset):
         return self.x[i], self.x[j], label
 
 
-def get_datasets():
-    try:sift
+def get_datasets(input_dir: Path=Path('/home/jiajunb/neural-dimension-reduction/data/sift/siftsmall')):
+    if (input_dir / 'sift.dev.dataset.pt').is_file() and (input_dir / 'sift.train.dataset.pt').is_file():
+        train_dataset = torch.load(input_dir / 'sift.train.dataset.pt')
+        dev_dataset = torch.load(input_dir / 'sift.dev.dataset.pt')
+        return train_dataset, dev_dataset
+
+    x = torch.from_numpy(fvecs_read(input_dir / "siftsmall_learn.fvecs"))
+    np.random.shuffle(x)
+    train_frac = 0.8
+    k = 100
+    split_idx = int(x.shape[0] * train_frac)
+
+    train_x, dev_x = x[:split_idx, :], x[split_idx:, :]
+    print(f'training set: {train_x.shape[0]} points; dev set: {dev_x.shape[0]} points.')
+    train_dataset = LargeSparseDataset(train_x, k, True, True)
+    dev_dataset = LargeSparseDataset(dev_x, k, False, False)
+    torch.save(train_dataset, input_dir / 'sift.train.dataset.pt')
+    torch.save(dev_dataset, input_dir / 'sift.dev.dataset.pt')
+    return train_dataset, dev_dataset
