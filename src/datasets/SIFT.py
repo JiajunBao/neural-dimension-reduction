@@ -99,11 +99,13 @@ class LargeSparseDataset(Dataset):
 
 def get_datasets(input_dir: Path=Path('/home/jiajunb/neural-dimension-reduction/data/sift/siftsmall')):
     if (input_dir / 'sift.dev.dataset.pt').is_file() and (input_dir / 'sift.train.dataset.pt').is_file():
+        print(f"loading dataset from {(input_dir / 'sift.dev.dataset.pt')}")
         train_dataset = torch.load(input_dir / 'sift.train.dataset.pt')
         dev_dataset = torch.load(input_dir / 'sift.dev.dataset.pt')
         return train_dataset, dev_dataset
 
-    x = torch.from_numpy(fvecs_read(input_dir / "siftsmall_learn.fvecs"))
+    print(f"building dataset")
+    x = fvecs_read(input_dir / "siftsmall_learn.fvecs")
     np.random.shuffle(x)
     train_frac = 0.8
     k = 100
