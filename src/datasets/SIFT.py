@@ -118,10 +118,12 @@ class QueryDataset(Dataset):
 
 
 def get_datasets(input_dir: Path=Path('/home/jiajunb/neural-dimension-reduction/data/sift/siftsmall')):
-    if (input_dir / 'sift.dev.dataset.pt').is_file() and (input_dir / 'sift.train.dataset.pt').is_file():
-        print(f"loading dataset from {(input_dir / 'sift.dev.dataset.pt')}")
-        train_dataset = torch.load(input_dir / 'sift.train.dataset.pt')
-        dev_dataset = torch.load(input_dir / 'sift.dev.dataset.pt')
+    dev_path = input_dir / 'sift.dev.query.dataset.pt'
+    train_path = input_dir / 'sift.train.learn.dataset.pt'
+    if dev_path.is_file() and train_path.is_file():
+        print(f"loading dataset from {input_dir}")
+        train_dataset = torch.load(train_path)
+        dev_dataset = torch.load(dev_path)
         return train_dataset, dev_dataset
 
     print(f"building dataset")
@@ -133,8 +135,8 @@ def get_datasets(input_dir: Path=Path('/home/jiajunb/neural-dimension-reduction/
 
     train_x, dev_x = x[:split_idx, :], x[split_idx:, :]
     print(f'training set: {train_x.shape[0]} points; dev set: {dev_x.shape[0]} points.')
-    train_dataset = LargeSparseDataset(torch.from_numpy(train_x), k, True, True)
-    dev_dataset = LargeSparseDataset(torch.from_numpy(dev_x), k, False, False)
-    torch.save(train_dataset, input_dir / 'sift.train.dataset.pt')
-    torch.save(dev_dataset, input_dir / 'sift.dev.dataset.pt')
+    train_dataset = LargeBaseDataset(torch.from_numpy(train_x), k, True, True)
+    dev_dataset = QueryDataset(query_vecs=dev_x, base_vecs=train_x, k=k)
+    torch.save(train_dataset, train_path)
+    torch.save(dev_dataset, dev_path)
     return train_dataset, dev_dataset
