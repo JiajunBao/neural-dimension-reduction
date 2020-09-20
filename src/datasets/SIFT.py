@@ -64,6 +64,7 @@ class LargeBaseDataset(Dataset):
         if not random_neg:
             raise NotImplementedError
 
+        self.data = list()
         for i in range(n):
             pos, mid, neg = list(), list(), list()
             for j in range(n):
