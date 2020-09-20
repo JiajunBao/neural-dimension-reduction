@@ -6,7 +6,7 @@ import random
 import numpy as np
 from tqdm.auto import tqdm
 import pandas as pd
-
+from collections import Counter
 import faiss
 from pathlib import  Path
 
@@ -60,34 +60,35 @@ class LargeBaseDataset(Dataset):
         # compute pairwise level grades
         grades = level_grading(torch.from_numpy(sorted_index), k)
         n, m = grades.shape
-        mutual_nn, onedirection_nn, not_nn = list(), list(), list()
+
+        if not random_neg:
+            raise NotImplementedError
+
         for i in range(n):
-            for j in range(k):
+            pos, mid, neg = list(), list(), list()
+            for j in range(n):
                 if grades[i][j].item() == -1:
-                    mutual_nn.append((i, j, -1))
+                    pos.append((i, j, -1))
                 elif grades[i][j].item() == 0:
-                    onedirection_nn.append((i, j, 0))
+                    mid.append((i, j, 0))
+                elif grades[i][j].item() == 1:
+                    neg.append((i, j, 1))
                 else:
+                    print(grades[i][j].item())
                     raise NotImplementedError
-        if balanced and random_neg:
-            neg = grades[:, k:]
-            sample_idx = torch.multinomial(neg, k)
-            nidx = torch.arange(n).view(-1, 1)
-            neg_sample = neg[nidx, sample_idx]
-            for i in range(n):
-                for j in range(k):
-                    not_nn.append((i, j + k, neg_sample[i][j].item(),))
-        elif balanced:
-            for i in range(n):
-                for j in range(k, 2 * k):
-                    not_nn.append((i, j, grades[i][j].item(),))
-        else:  # everything
-            for i in range(n):
-                for j in range(m):
-                    not_nn.append((i, j, grades[i][j].item(),))
-        self.data = mutual_nn + onedirection_nn + not_nn
+            pos_or_mid = pos + mid
+            if balanced and random_neg:
+                size = min(len(pos_or_mid), len(neg))
+                random.shuffle(pos_or_mid)
+                random.shuffle(neg)
+                pos_or_mid = pos_or_mid[:size]
+                neg = neg[:size]
+            self.data += pos_or_mid + neg
+
+        _, _, label = zip(*self.data)
+        label_counts = Counter(label)
         print(f'{x.shape[0]} points, {len(self.data)} pairs')
-        print(f"mutual nn: {len(mutual_nn)} one-direction nn: {len(onedirection_nn)} not nn: {len(not_nn)}")
+        print(f"mutual nn: {label_counts[-1]} one-direction nn: {label_counts[0]} not nn: {label_counts[1]}")
 
     def __len__(self):
         return len(self.data)
