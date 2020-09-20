@@ -5,6 +5,7 @@ import copy
 import random
 from tqdm.auto import tqdm
 import pandas as pd
+import faiss
 
 random.seed(35)
 
@@ -69,6 +70,34 @@ def train_one_epoch(train_loader, model, optimizer, criterion, verbose, device):
     dist = torch.cat(dist_list, dim=0)
     return train_margin_loss / len(train_loader.dataset), (
         train_correct_pred / len(train_loader.dataset), pred, gold, dist)
+
+
+def eval_with_query(base_loader, query_loader, model, device):
+    model.eval()
+    embedded_queries, embedded_base = list(), list()
+    model = model.to(device)
+    with torch.no_grad():
+        for i, batch in enumerate(base_loader):
+            # infer embeddings for all base vectors
+            query_vecs, _ = batch
+            embedded_batch = model.get_embedding(query_vecs.to(device)).cpu()
+            embedded_base.append(embedded_batch)
+
+        for i, batch in enumerate(query_loader):
+            # infer embeddings for query loader
+            query_vecs, _ = batch
+            embedded_batch = model.get_embedding(query_vecs.to(device)).cpu()
+            embedded_queries.append(embedded_batch)
+
+    embedded_queries = torch.cat(embedded_queries, dim=0)
+    embedded_base = torch.cat(embedded_base, dim=0)
+    n, d = embedded_base.shape
+    index = faiss.IndexFlatL2(d)  # build the index
+    index.add(embedded_base)  # add vectors to the index
+
+    base_neighbor_distance, base_neighbor_index = index.search(embedded_base, base_loader.k)  # actual search
+    query_neighbor_distance, query_neighbor_index = index.search(embedded_queries, query_loader.k)  # actual search
+    
 
 
 def val_one_epoch(val_loader, criterion, model, device):

@@ -8,7 +8,7 @@ from tqdm.auto import tqdm
 import pandas as pd
 from collections import Counter
 import faiss
-from pathlib import  Path
+from pathlib import Path
 
 
 random.seed(35)
