@@ -23,3 +23,5 @@ runx
 notebook
 seaborn
 matplotlib
+faiss-gpu
+cudatoolkit==10.0
