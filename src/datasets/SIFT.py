@@ -56,8 +56,9 @@ class LargeBaseDataset(Dataset):
         index = faiss.IndexFlatL2(d)  # build the index
         index.add(x)  # add vectors to the index
         sorted_distance, sorted_index = index.search(x, x.shape[0])  # actual search
+        self.x = torch.from_numpy(x)
         # compute pairwise level grades
-        grades = level_grading(sorted_index, k)
+        grades = level_grading(torch.from_numpy(sorted_index), k)
         n, m = grades.shape
         mutual_nn, onedirection_nn, not_nn = list(), list(), list()
         for i in range(n):
@@ -85,7 +86,6 @@ class LargeBaseDataset(Dataset):
                 for j in range(m):
                     not_nn.append((i, j, grades[i][j].item(),))
         self.data = mutual_nn + onedirection_nn + not_nn
-        self.x = x
         print(f'{x.shape[0]} points, {len(self.data)} pairs')
         print(f"mutual nn: {len(mutual_nn)} one-direction nn: {len(onedirection_nn)} not nn: {len(not_nn)}")
 
@@ -135,7 +135,7 @@ def get_datasets(input_dir: Path=Path('/home/jiajunb/neural-dimension-reduction/
 
     train_x, dev_x = x[:split_idx, :], x[split_idx:, :]
     print(f'training set: {train_x.shape[0]} points; dev set: {dev_x.shape[0]} points.')
-    train_dataset = LargeBaseDataset(torch.from_numpy(train_x), k, True, True)
+    train_dataset = LargeBaseDataset(train_x, k, True, True)
     dev_dataset = QueryDataset(query_vecs=dev_x, base_vecs=train_x, k=k)
     torch.save(train_dataset, train_path)
     torch.save(dev_dataset, dev_path)
