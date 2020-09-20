@@ -28,16 +28,20 @@ class PowerMarginLoss:
         l2 = (y - 1) * (y - 1) * (y + 1) * torch.max(dist - self.m2, self.m3 - dist)
         l3 = (y + 1) * (y - 0.5) * torch.clamp(self.m4 - dist, min=0)
         loss = l1 + l2 + l3
+
+        pred = torch.ones_like(dist)
+        pred[dist < self.m1] = -1
+        pred[(dist >= self.m1) & (dist <= self.m4)] = 0
+        pred[dist > self.m4] = 1
         if self.reduction == 'sum':
             print(self.reduction)
-            return loss.sum(), dist
-        return loss.mean(), dist
+            return loss.sum(), pred, dist
+        return loss.mean(), pred, dist
 
 
-def train_one_epoch(train_loader, model, optimizer, verbose, device):
+def train_one_epoch(train_loader, model, optimizer, criterion, verbose, device):
     model = model.to(device)
     model.train()
-    criterion = TriMarginLoss(1, 3, 4, 6, 'mean')
     train_margin_loss = 0.
     pred_list = list()
     label_list = list()
@@ -47,12 +51,8 @@ def train_one_epoch(train_loader, model, optimizer, verbose, device):
         x1, x2, label = batch
         x1_device, x2_device = x1.to(device), x2.to(device)
         output1, output2 = model(x1_device, x2_device)
-        loss, dist = criterion.forward(output1, output2, label.to(device))
+        loss, dist, pred = criterion.forward(output1, output2, label.to(device))
 
-        pred = torch.ones_like(dist)
-        pred[dist <= 1] = -1
-        pred[(dist >= 3) & (dist <= 4)] = 0
-        pred[dist >= 6] = 1
         pred_list.append(pred.cpu())
         label_list.append(label.cpu())
         dist_list.append(dist.cpu())
@@ -71,9 +71,8 @@ def train_one_epoch(train_loader, model, optimizer, verbose, device):
         train_correct_pred / len(train_loader.dataset), pred, gold, dist)
 
 
-def val_one_epoch(val_loader, model, device):
+def val_one_epoch(val_loader, criterion, model, device):
     model.eval()
-    criterion = TriMarginLoss(1, 3, 4, 6, 'mean')
     val_margin_loss = 0.
     pred_list = list()
     label_list = list()
@@ -84,12 +83,8 @@ def val_one_epoch(val_loader, model, device):
             x1, x2, label = batch
             x1_device, x2_device = x1.to(device), x2.to(device)
             output1, output2 = model(x1_device, x2_device)
-            loss, dist = criterion.forward(output1, output2, label.to(device))
+            loss, dist, pred = criterion.forward(output1, output2, label.to(device))
 
-            pred = torch.ones_like(dist)
-            pred[dist <= 1] = -1
-            pred[(dist >= 3) & (dist <= 4)] = 0
-            pred[dist >= 6] = 1
             val_correct_pred += (pred == label.to(device)).sum().item()
             pred_list.append(pred.cpu())
             label_list.append(label.cpu())
@@ -121,10 +116,9 @@ def train_with_eval(train_loader, val_loader, model, optimizer, num_epoches, log
     return best_avg_val_margin_loss, best_model, model
 
 
-def eval_in_train_one_epoch(train_loader, val_loader, model, optimizer, device):
+def eval_in_train_one_epoch(train_loader, val_loader, criterion, model, optimizer, device):
     model = model.to(device)
     model.train()
-    criterion = TriMarginLoss(1, 3, 4, 6, 'mean')
     train_margin_loss = 0.
     pred_list = list()
     label_list = list()
@@ -136,12 +130,8 @@ def eval_in_train_one_epoch(train_loader, val_loader, model, optimizer, device):
         x1, x2, label = batch
         x1_device, x2_device = x1.to(device), x2.to(device)
         output1, output2 = model(x1_device, x2_device)
-        loss, dist = criterion.forward(output1, output2, label.to(device))
+        loss, dist, pred = criterion.forward(output1, output2, label.to(device))
 
-        pred = torch.ones_like(dist)
-        pred[dist <= 1] = -1
-        pred[(dist >= 3) & (dist <= 4)] = 0
-        pred[dist >= 6] = 1
         pred_list.append(pred.cpu())
         label_list.append(label.cpu())
         dist_list.append(dist.cpu())
@@ -152,7 +142,7 @@ def eval_in_train_one_epoch(train_loader, val_loader, model, optimizer, device):
         optimizer.step()
         train_margin_loss += loss.item()
         if i % (len(train_loader) // 10 + 1) == 0:
-            val_loss, val_accuracy = val_one_epoch(val_loader, model, device)
+            val_loss, val_accuracy = val_one_epoch(val_loader, criterion, model, device)
             print(f'val_loss: {val_loss} val_accuracy: {val_accuracy}')
             if val_loss < best_val_loss:
                 best_val_loss = val_loss
