@@ -47,7 +47,7 @@ def level_grading(sorted_indexes: torch.tensor, k: int):
     return original_ordered_res
 
 
-class LargeSparseDataset(Dataset):
+class LargeBaseDataset(Dataset):
     def __init__(self, x, k, balanced, random_neg):
         # compute the actual nearest neighbor
         self.k = k
@@ -97,6 +97,26 @@ class LargeSparseDataset(Dataset):
         return self.x[i], self.x[j], label
 
 
+class QueryDataset(Dataset):
+    def __init__(self, query_vecs, base_vecs, k):
+        self.k = k
+        self.query_vecs = query_vecs
+        print(f'shape of base vectors: {base_vecs.shape}, shape of query_vectors: {base_vecs.shape}')
+        n, d = base_vecs.shape
+        index = faiss.IndexFlatL2(d)  # build the index
+        index.add(base_vecs)  # add vectors to the index
+        print(f'search top {k} neighbors')
+        sorted_distance, sorted_index = index.search(query_vecs, k)  # actual search
+        self.ground_true_nn = sorted_index
+        print(f'ground neighbors shape {sorted_index.shape}')
+
+    def __len__(self):
+        return self.query_vecs.shape[0]
+
+    def __getitem__(self, idx):
+        return self.query_vecs[idx], self.ground_true_nn[idx]
+
+
 def get_datasets(input_dir: Path=Path('/home/jiajunb/neural-dimension-reduction/data/sift/siftsmall')):
     if (input_dir / 'sift.dev.dataset.pt').is_file() and (input_dir / 'sift.train.dataset.pt').is_file():
         print(f"loading dataset from {(input_dir / 'sift.dev.dataset.pt')}")
@@ -113,8 +133,8 @@ def get_datasets(input_dir: Path=Path('/home/jiajunb/neural-dimension-reduction/
 
     train_x, dev_x = x[:split_idx, :], x[split_idx:, :]
     print(f'training set: {train_x.shape[0]} points; dev set: {dev_x.shape[0]} points.')
-    train_dataset = LargeSparseDataset(train_x, k, True, True)
-    dev_dataset = LargeSparseDataset(dev_x, k, False, False)
+    train_dataset = LargeSparseDataset(torch.from_numpy(train_x), k, True, True)
+    dev_dataset = LargeSparseDataset(torch.from_numpy(dev_x), k, False, False)
     torch.save(train_dataset, input_dir / 'sift.train.dataset.pt')
     torch.save(dev_dataset, input_dir / 'sift.dev.dataset.pt')
     return train_dataset, dev_dataset
