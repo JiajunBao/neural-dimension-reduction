@@ -69,8 +69,10 @@ def train_one_epoch(train_loader, model, optimizer, criterion, verbose, device):
     pred = torch.cat(pred_list, dim=0)
     gold = torch.cat(label_list, dim=0)
     dist = torch.cat(dist_list, dim=0)
-    return train_margin_loss / len(train_loader.dataset), \
-        (train_correct_pred / len(train_loader.dataset), pred, gold, dist)
+
+    demon = len(train_loader) if criterion.reduction == 'mean' else len(train_loader.dataset)
+    return train_margin_loss / demon, \
+        (train_correct_pred / demon, pred, gold, dist)
 
 
 def eval_with_query(base_loader, query_loader, model, device):
