@@ -126,8 +126,9 @@ def get_datasets(input_dir: Path=Path('/home/jiajunb/neural-dimension-reduction/
     if dev_path.is_file() and train_path.is_file() and base_path.is_file():
         print(f"loading dataset from {input_dir}")
         train_dataset = torch.load(train_path)
+        base_dataset = torch.load(base_path)
         dev_dataset = torch.load(dev_path)
-        return train_dataset, dev_dataset
+        return train_dataset, base_dataset, dev_dataset
 
     print(f"building dataset")
     x = fvecs_read(input_dir / "siftsmall_learn.fvecs")
@@ -144,4 +145,4 @@ def get_datasets(input_dir: Path=Path('/home/jiajunb/neural-dimension-reduction/
     torch.save(train_dataset, train_path)
     torch.save(base_dataset, base_path)
     torch.save(dev_dataset, dev_path)
-    return train_dataset, base_path, dev_dataset
+    return train_dataset, base_dataset, dev_dataset
