@@ -118,6 +118,7 @@ def get_recall(gold: torch.tensor, pred: torch.tensor):
 
 def train_with_eval(train_loader, base_loader, eval_query_loader, criterion, model, optimizer, num_epoches, log_epoch,
                     verbose, device, trial=None):
+    start = time.time()
     best_model = None
     best_recall_query_set = 0
     its_recall_on_base_set = 0
@@ -136,4 +137,6 @@ def train_with_eval(train_loader, base_loader, eval_query_loader, criterion, mod
                   f'recall on base set: {its_recall_on_base_set: .2f}')
         if trial:
             trial.report(best_recall_query_set, epoch_idx)
+    end = time.time()
+    print(f'elapse time: {end - start}')
     return best_recall_query_set, its_recall_on_base_set, best_model, model
