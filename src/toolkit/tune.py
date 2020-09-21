@@ -13,12 +13,12 @@ train_set, base_set, eval_set = SIFT.get_datasets()
 def objective(trial):
     model = network.SiameseNet(network.EmbeddingNet())
     learning_rate = trial.suggest_float("learning_rate", 1e-5, 1e-2, log=True)
-    batch_size = 32768 * 2
+    batch_size = 32768
     num_epoches = 30
 
     verbose = False
     device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
-    weight_decay = 1e-6
+    weight_decay = trial.suggest_float("weight_decay", 1e-4, 1e-7, log=True)
     log_epoch = 1
     # optimizer
     no_decay = ['bias', 'LayerNorm.weight']
