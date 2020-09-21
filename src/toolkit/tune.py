@@ -16,8 +16,8 @@ def objective(trial):
     batch_size = 32768
     num_epoches = 5
 
-    verbose = True
-    device = 'cuda:1' if torch.cuda.is_available() else 'cpu'
+    verbose = False
+    device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
     weight_decay = 1e-6
     log_epoch = 1
     # optimizer
