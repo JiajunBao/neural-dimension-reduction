@@ -16,7 +16,7 @@ def objective(trial):
     batch_size = 32768
     num_epoches = 30
 
-    verbose = False
+    verbose = True
     device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
     weight_decay = trial.suggest_float("weight_decay", 1e-7, 1e-4, log=True)
     log_epoch = 1
@@ -51,7 +51,7 @@ def objective(trial):
 def main():
     study = optuna.create_study(direction="maximize")
 
-    study.optimize(objective, n_trials=100, timeout=None)
+    study.optimize(objective, n_trials=20, timeout=None)
 
     print("Study statistics: ")
     print("  Number of finished trials: ", len(study.trials))
