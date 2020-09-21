@@ -6,6 +6,7 @@ import random
 from tqdm.auto import tqdm
 import pandas as pd
 import faiss
+import time
 
 random.seed(35)
 
@@ -68,11 +69,12 @@ def train_one_epoch(train_loader, model, optimizer, criterion, verbose, device):
     pred = torch.cat(pred_list, dim=0)
     gold = torch.cat(label_list, dim=0)
     dist = torch.cat(dist_list, dim=0)
-    return train_margin_loss / len(train_loader.dataset), (
-        train_correct_pred / len(train_loader.dataset), pred, gold, dist)
+    return train_margin_loss / len(train_loader.dataset), \
+           (train_correct_pred / len(train_loader.dataset), pred, gold, dist)
 
 
 def eval_with_query(base_loader, query_loader, model, device):
+    start = time.time()
     model.eval()
     embedded_queries, embedded_base = list(), list()
     model = model.to(device)
@@ -106,53 +108,26 @@ def eval_with_query(base_loader, query_loader, model, device):
         tp += len(set(base_neighbor_index.tolist()) & set(query_neighbor_index.tolist()))
     tp_and_fn = query_neighbor_index.shape[0] * query_neighbor_index.shape[1]
     recall = tp / tp_and_fn
-    print(f'recall @{query_neighbor_index.shape[1]}: {recall}')
-    return recall, base_neighbor_index, query_neighbor_index
+    end = time.time()
+    return recall, base_neighbor_index, query_neighbor_index, end - start
 
 
-def val_one_epoch(val_loader, criterion, model, device):
-    model.eval()
-    val_margin_loss = 0.
-    pred_list = list()
-    label_list = list()
-    dist_list = list()
-    val_correct_pred = 0
-    with torch.no_grad():
-        for i, batch in enumerate(val_loader):
-            x1, x2, label = batch
-            x1_device, x2_device = x1.to(device), x2.to(device)
-            output1, output2 = model(x1_device, x2_device)
-            loss, dist, pred = criterion.forward(output1, output2, label.to(device))
-
-            val_correct_pred += (pred == label.to(device)).sum().item()
-            pred_list.append(pred.cpu())
-            label_list.append(label.cpu())
-            dist_list.append(dist.cpu())
-            val_margin_loss += loss.item()
-    #             if i % 20 == 0:
-    #                 print(f'batch mean val loss: {val_margin_loss / (i + 1):.4f}')
-    pred = torch.cat(pred_list, dim=0)
-    gold = torch.cat(label_list, dim=0)
-    dist = torch.cat(dist_list, dim=0)
-    return val_margin_loss / len(val_loader.dataset), (val_correct_pred / len(val_loader.dataset), pred, gold, dist)
-
-
-def train_with_eval(train_loader, val_loader, model, optimizer, num_epoches, log_epoch, verbose, device):
+def train_with_eval(train_loader, base_loader, eval_query_loader, criterion, model, optimizer, num_epoches, log_epoch,
+                    verbose, device):
     best_model = None
-    best_avg_val_margin_loss = float('inf')
+    best_recall = 0
     for epoch_idx in range(1, num_epoches + 1):
         avg_train_loss, (train_accuracy, train_pred, train_gold, dist) = train_one_epoch(train_loader, model, optimizer,
-                                                                                         False, device)
-        avg_val_margin_loss, (val_accuracy, val_pred, val_gold, dist) = val_one_epoch(val_loader, model, device)
-        if avg_val_margin_loss < best_avg_val_margin_loss:
-            best_avg_val_margin_loss = avg_val_margin_loss
+                                                                                         criterion, verbose, device)
+        recall, base_neighbor_index, query_neighbor_index, elapse_time = eval_with_query(base_loader, eval_query_loader,
+                                                                                         model, device)
+        if best_recall < recall:
+            best_recall = recall
             best_model = copy.deepcopy(model.cpu())
         if verbose and epoch_idx % log_epoch == 0:
             print(f'epoch [{epoch_idx}]/[{num_epoches}] training loss: {avg_train_loss:.6f} '
-                  f'avg_val_margin_loss: {avg_val_margin_loss:.4f} '
-                  f'train_accuracy: {train_accuracy: .2f} '
-                  f'val_accuracy: {val_accuracy: .2f} ')
-    return best_avg_val_margin_loss, best_model, model
+                  f'recall: {recall:.2f} ')
+    return best_recall, best_model, model
 
 
 def eval_in_train_one_epoch(train_loader, val_loader, criterion, model, optimizer, device):
