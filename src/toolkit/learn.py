@@ -119,16 +119,19 @@ def get_recall(gold: torch.tensor, pred: torch.tensor):
 def train_with_eval(train_loader, base_loader, eval_query_loader, criterion, model, optimizer, num_epoches, log_epoch,
                     verbose, device):
     best_model = None
-    best_recall = 0
+    best_recall_query_set = 0
+    its_recall_on_base_set = 0
     for epoch_idx in range(1, num_epoches + 1):
         avg_train_loss, (train_accuracy, train_pred, train_gold, dist) = train_one_epoch(train_loader, model, optimizer,
                                                                                          criterion, verbose, device)
-        recall, base_neighbor_index, query_neighbor_index, elapse_time = eval_with_query(base_loader, eval_query_loader,
+        recall_on_base_set, recall_on_query_set, base_neighbor_index, query_neighbor_index, elapse_time = eval_with_query(base_loader, eval_query_loader,
                                                                                          model, device)
-        if best_recall < recall:
-            best_recall = recall
+        if best_recall_query_set < recall_on_query_set:
+            best_recall_query_set = recall_on_query_set
+            its_recall_on_base_set = recall_on_base_set
             best_model = copy.deepcopy(model.cpu())
         if verbose and epoch_idx % log_epoch == 0:
             print(f'epoch [{epoch_idx}]/[{num_epoches}] training loss: {avg_train_loss:.6f} '
-                  f'recall: {recall:.2f} ')
-    return best_recall, best_model, model
+                  f'recall on query set: {best_recall_query_set:.2f} '
+                  f'recall on base set: {its_recall_on_base_set: .2f}')
+    return best_recall_query_set, its_recall_on_base_set, best_model, model
