@@ -97,7 +97,17 @@ def eval_with_query(base_loader, query_loader, model, device):
 
     base_neighbor_distance, base_neighbor_index = index.search(embedded_base, base_loader.k)  # actual search
     query_neighbor_distance, query_neighbor_index = index.search(embedded_queries, query_loader.k)  # actual search
-    
+
+    assert base_neighbor_index.shape[0] == query_neighbor_index.shape[0], 'inconsistent number of rows'
+    assert base_neighbor_index.shape[1] == query_neighbor_index.shape[1], 'inconsistent number of neighbors retrieved'
+
+    tp = 0
+    for i in range(base_neighbor_index.shape[0]):
+        tp += len(set(base_neighbor_index.tolist()) & set(query_neighbor_index.tolist()))
+    tp_and_fn = query_neighbor_index.shape[0] * query_neighbor_index.shape[1]
+    recall = tp / tp_and_fn
+    print(f'recall @{query_neighbor_index.shape[1]}: {recall}')
+    return recall, base_neighbor_index, query_neighbor_index
 
 
 def val_one_epoch(val_loader, criterion, model, device):
