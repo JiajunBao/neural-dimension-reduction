@@ -144,4 +144,4 @@ def get_datasets(input_dir: Path=Path('/home/jiajunb/neural-dimension-reduction/
     torch.save(train_dataset, train_path)
     torch.save(base_dataset, base_path)
     torch.save(dev_dataset, dev_path)
-    return train_dataset, dev_dataset
+    return train_dataset, base_path, dev_dataset
