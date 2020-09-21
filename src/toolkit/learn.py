@@ -100,16 +100,20 @@ def eval_with_query(base_loader, query_loader, model, device):
     base_neighbor_distance, base_neighbor_index = index.search(embedded_base, base_loader.k)  # actual search
     query_neighbor_distance, query_neighbor_index = index.search(embedded_queries, query_loader.k)  # actual search
 
-    assert base_neighbor_index.shape[0] == query_neighbor_index.shape[0], 'inconsistent number of rows'
-    assert base_neighbor_index.shape[1] == query_neighbor_index.shape[1], 'inconsistent number of neighbors retrieved'
-
-    tp = 0
-    for i in range(base_neighbor_index.shape[0]):
-        tp += len(set(base_neighbor_index.tolist()) & set(query_neighbor_index.tolist()))
-    tp_and_fn = query_neighbor_index.shape[0] * query_neighbor_index.shape[1]
-    recall = tp / tp_and_fn
+    recall_on_base_set = get_recall(base_loader.ground_true_nn, base_neighbor_index)
+    recall_on_query_set = get_recall(query_loader.ground_true_nn, query_neighbor_index)
     end = time.time()
-    return recall, base_neighbor_index, query_neighbor_index, end - start
+    return recall_on_base_set, recall_on_query_set, base_neighbor_index, query_neighbor_index, end - start
+
+
+def get_recall(gold: torch.tensor, pred: torch.tensor):
+    assert gold.shape == pred.shape, f'inconsistent shape: {gold.shape} vs {pred.shape}'
+    tp = 0
+    gold_list, pred_list = gold.tolist(), pred.tolist()
+    for i in range(gold.shape[0]):
+        tp += len(set(gold_list[i]) & set(pred_list[i]))
+    tp_and_fn = pred.shape[0] * pred.shape[1]
+    return tp / tp_and_fn
 
 
 def train_with_eval(train_loader, base_loader, eval_query_loader, criterion, model, optimizer, num_epoches, log_epoch,
@@ -128,61 +132,3 @@ def train_with_eval(train_loader, base_loader, eval_query_loader, criterion, mod
             print(f'epoch [{epoch_idx}]/[{num_epoches}] training loss: {avg_train_loss:.6f} '
                   f'recall: {recall:.2f} ')
     return best_recall, best_model, model
-
-
-def eval_in_train_one_epoch(train_loader, val_loader, criterion, model, optimizer, device):
-    model = model.to(device)
-    model.train()
-    train_margin_loss = 0.
-    pred_list = list()
-    label_list = list()
-    dist_list = list()
-    train_correct_pred = 0
-    best_val_loss, best_val_accuracy = float('inf'), 0
-    best_model = None
-    for i, batch in enumerate(train_loader):
-        x1, x2, label = batch
-        x1_device, x2_device = x1.to(device), x2.to(device)
-        output1, output2 = model(x1_device, x2_device)
-        loss, dist, pred = criterion.forward(output1, output2, label.to(device))
-
-        pred_list.append(pred.cpu())
-        label_list.append(label.cpu())
-        dist_list.append(dist.cpu())
-        train_correct_pred += (pred == label.to(device)).sum().item()
-
-        model.zero_grad()  # reset gradient
-        loss.backward()
-        optimizer.step()
-        train_margin_loss += loss.item()
-        if i % (len(train_loader) // 10 + 1) == 0:
-            val_loss, val_accuracy = val_one_epoch(val_loader, criterion, model, device)
-            print(f'val_loss: {val_loss} val_accuracy: {val_accuracy}')
-            if val_loss < best_val_loss:
-                best_val_loss = val_loss
-                best_val_accuracy = val_accuracy
-                best_model = copy.deepcopy(model)
-    pred = torch.cat(pred_list, dim=0)
-    gold = torch.cat(label_list, dim=0)
-    dist = torch.cat(dist_list, dim=0)
-    return train_margin_loss / len(train_loader.dataset), \
-        (train_correct_pred / len(train_loader.dataset), pred, gold, dist), \
-        (best_val_loss, best_val_accuracy, best_model)
-
-
-def eval_in_train(train_loader, val_loader, model, optimizer, num_epoches, log_epoch, verbose, device):
-    best_model = None
-    best_avg_val_margin_loss = float('inf')
-    for epoch_idx in range(1, num_epoches + 1):
-        avg_train_loss, (train_accuracy, train_pred, train_gold, dist), (val_loss, val_acc, epoch_best_model) = \
-            eval_in_train_one_epoch(train_loader, val_loader, model, optimizer, device)
-
-        if val_loss < best_avg_val_margin_loss:
-            best_avg_val_margin_loss = val_loss
-            best_model = epoch_best_model
-        if verbose and epoch_idx % log_epoch == 0:
-            print(f'epoch [{epoch_idx}]/[{num_epoches}] training loss: {avg_train_loss:.6f} '
-                  f'avg_val_margin_loss: {val_loss:.4f} '
-                  f'train_accuracy: {train_accuracy: .2f} '
-                  f'val_accuracy: {val_acc: .2f} ')
-    return best_avg_val_margin_loss, best_model, model
