@@ -18,7 +18,7 @@ def objective(trial):
 
     verbose = False
     device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
-    weight_decay = trial.suggest_float("weight_decay", 1e-4, 1e-7, log=True)
+    weight_decay = trial.suggest_float("weight_decay", 1e-7, 1e-4, log=True)
     log_epoch = 1
     # optimizer
     no_decay = ['bias', 'LayerNorm.weight']
