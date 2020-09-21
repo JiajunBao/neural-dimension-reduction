@@ -1,127 +1,63 @@
-import os
-
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
-import torch.optim as optim
+from src.toolkit import network
+from torch.utils.data import DataLoader
 import torch.utils.data
-from torchvision import datasets
-from torchvision import transforms
+from src.toolkit import learn
+from src.datasets import SIFT
 
 import optuna
 
 
-DEVICE = torch.device("cpu")
-BATCHSIZE = 128
-CLASSES = 10
-DIR = os.getcwd()
-EPOCHS = 4
-LOG_INTERVAL = 10
-N_TRAIN_EXAMPLES = BATCHSIZE * 30
-N_VALID_EXAMPLES = BATCHSIZE * 10
-
-
-def define_model(trial):
-    # We optimize the number of layers, hidden untis and dropout ratio in each layer.
-    n_layers = trial.suggest_int("n_layers", 1, 3)
-    layers = []
-
-    in_features = 28 * 28
-    for i in range(n_layers):
-        out_features = trial.suggest_int("n_units_l{}".format(i), 4, 128)
-        layers.append(nn.Linear(in_features, out_features))
-        layers.append(nn.ReLU())
-        p = trial.suggest_float("dropout_l{}".format(i), 0.2, 0.5)
-        layers.append(nn.Dropout(p))
-
-        in_features = out_features
-    layers.append(nn.Linear(in_features, CLASSES))
-    layers.append(nn.LogSoftmax(dim=1))
-
-    return nn.Sequential(*layers)
-
-
-def get_mnist():
-    # Load MNIST dataset.
-    train_loader = torch.utils.data.DataLoader(
-        datasets.MNIST(DIR, train=True, download=True, transform=transforms.ToTensor()),
-        batch_size=BATCHSIZE,
-        shuffle=True,
-    )
-    valid_loader = torch.utils.data.DataLoader(
-        datasets.MNIST(DIR, train=False, transform=transforms.ToTensor()),
-        batch_size=BATCHSIZE,
-        shuffle=True,
-    )
-
-    return train_loader, valid_loader
+def get_datasets():
+    train_set, base_set, eval_set = SIFT.get_datasets()
+    return train_set, base_set, eval_set
 
 
 def objective(trial):
+    model = network.SiameseNet(network.EmbeddingNet())
+    batch_size = 32768
+    num_epoches = 5
 
-    # Generate the model.
-    model = define_model(trial).to(DEVICE)
+    verbose = True
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    weight_decay = 1e-6
+    log_epoch = 1
 
-    # Generate the optimizers.
-    optimizer_name = trial.suggest_categorical("optimizer", ["Adam", "RMSprop", "SGD"])
-    lr = trial.suggest_float("lr", 1e-5, 1e-1, log=True)
-    optimizer = getattr(optim, optimizer_name)(model.parameters(), lr=lr)
+    train_set, base_set, eval_set = get_datasets()
 
-    # Get the MNIST dataset.
-    train_loader, valid_loader = get_mnist()
+    # optimizer
+    no_decay = ['bias', 'LayerNorm.weight']
+    optimizer_grouped_parameters = [
+        {'params': [p for n, p in model.named_parameters() if not any(
+            nd in n for nd in no_decay) and p.requires_grad], 'weight_decay': weight_decay},
+        {'params': [p for n, p in model.named_parameters() if any(
+            nd in n for nd in no_decay) and p.requires_grad], 'weight_decay': 0.0}
+    ]
 
-    # Training of the model.
-    for epoch in range(EPOCHS):
-        model.train()
-        for batch_idx, (data, target) in enumerate(train_loader):
-            # Limiting training data for faster epochs.
-            if batch_idx * BATCHSIZE >= N_TRAIN_EXAMPLES:
-                break
+    lr = trial.suggest_float("lr", 1e-5, 1e-2, log=True)
+    optimizer = torch.optim.AdamW(params=optimizer_grouped_parameters, lr=lr)
 
-            data, target = data.view(data.size(0), -1).to(DEVICE), target.to(DEVICE)
+    train_loader = DataLoader(train_set, shuffle=True, batch_size=batch_size, pin_memory=True)
+    base_loader = DataLoader(base_set, shuffle=True, batch_size=batch_size, pin_memory=True)
+    eval_loader = DataLoader(eval_set, shuffle=False, batch_size=batch_size, pin_memory=True)
 
-            optimizer.zero_grad()
-            output = model(data)
-            loss = F.nll_loss(output, target)
-            loss.backward()
-            optimizer.step()
-
-        # Validation of the model.
-        model.eval()
-        correct = 0
-        with torch.no_grad():
-            for batch_idx, (data, target) in enumerate(valid_loader):
-                # Limiting validation data.
-                if batch_idx * BATCHSIZE >= N_VALID_EXAMPLES:
-                    break
-                data, target = data.view(data.size(0), -1).to(DEVICE), target.to(DEVICE)
-                output = model(data)
-                # Get the index of the max log-probability.
-                pred = output.argmax(dim=1, keepdim=True)
-                correct += pred.eq(target.view_as(pred)).sum().item()
-
-        accuracy = correct / min(len(valid_loader.dataset), N_VALID_EXAMPLES)
-
-        trial.report(accuracy, epoch)
-
-        # Handle pruning based on the intermediate value.
-        if trial.should_prune():
-            raise optuna.exceptions.TrialPruned()
-
-    return accuracy
+    margin = trial.suggest_int("margin", 1, 5, log=True)
+    criterion = learn.PowerMarginLoss(margin, reduction='mean')
+    model = model.to(device)
+    best_recall_query_set, its_recall_on_base_set, best_model, model = learn.train_with_eval(train_loader, base_loader,
+                                                                                             eval_loader, criterion,
+                                                                                             model, optimizer,
+                                                                                             num_epoches, log_epoch,
+                                                                                             verbose, device, trial)
+    return best_recall_query_set, its_recall_on_base_set, best_model, model
 
 
 if __name__ == "__main__":
     study = optuna.create_study(direction="maximize")
-    study.optimize(objective, n_trials=100, timeout=600)
-
-    pruned_trials = [t for t in study.trials if t.state == optuna.trial.TrialState.PRUNED]
-    complete_trials = [t for t in study.trials if t.state == optuna.trial.TrialState.COMPLETE]
+    study.optimize(objective, n_trials=100, timeout=None)
 
     print("Study statistics: ")
     print("  Number of finished trials: ", len(study.trials))
-    print("  Number of pruned trials: ", len(pruned_trials))
-    print("  Number of complete trials: ", len(complete_trials))
 
     print("Best trial:")
     trial = study.best_trial

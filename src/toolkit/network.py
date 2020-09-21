@@ -10,7 +10,7 @@ class EmbeddingNet(nn.Module):
             OrderedDict([
                 ('bn0', nn.BatchNorm1d(200)),
                 ('relu0', nn.ReLU(inplace=True)),
-                ('fc0', nn.Linear(200, 500)),
+                ('fc0', nn.Linear(128, 500)),
                 ('bn1', nn.BatchNorm1d(500)),
                 ('relu1', nn.ReLU(inplace=True)),
                 ('fc1', nn.Linear(500, 100)),
