@@ -124,8 +124,8 @@ def train_with_eval(train_loader, base_loader, eval_query_loader, criterion, mod
     for epoch_idx in range(1, num_epoches + 1):
         avg_train_loss, (train_accuracy, train_pred, train_gold, dist) = train_one_epoch(train_loader, model, optimizer,
                                                                                          criterion, verbose, device)
-        recall_on_base_set, recall_on_query_set, base_neighbor_index, query_neighbor_index, elapse_time = eval_with_query(base_loader, eval_query_loader,
-                                                                                         model, device)
+        recall_on_base_set, recall_on_query_set, base_neighbor_index, \
+            query_neighbor_index, elapse_time = eval_with_query(base_loader, eval_query_loader, model, device)
         if best_recall_query_set < recall_on_query_set:
             best_recall_query_set = recall_on_query_set
             its_recall_on_base_set = recall_on_base_set
