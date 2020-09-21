@@ -123,7 +123,7 @@ def get_datasets(input_dir: Path=Path('/home/jiajunb/neural-dimension-reduction/
     dev_path = input_dir / 'sift.dev.query.dataset.pt'
     train_path = input_dir / 'sift.train.learn.dataset.pt'
     base_path = input_dir / 'sift.train.query.dataset.pt'
-    if dev_path.is_file() and train_path.is_file():
+    if dev_path.is_file() and train_path.is_file() and base_path.is_file():
         print(f"loading dataset from {input_dir}")
         train_dataset = torch.load(train_path)
         dev_dataset = torch.load(dev_path)
