@@ -25,3 +25,4 @@ seaborn
 matplotlib
 faiss-gpu
 cudatoolkit==10.0
+optuna

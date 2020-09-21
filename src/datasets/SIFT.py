@@ -65,7 +65,7 @@ class LargeBaseDataset(Dataset):
             raise NotImplementedError
 
         self.data = list()
-        for i in range(n):
+        for i in tqdm(range(n)):
             pos, mid, neg = list(), list(), list()
             for j in range(n):
                 if grades[i][j].item() == -1:
