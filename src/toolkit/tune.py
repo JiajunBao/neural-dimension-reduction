@@ -13,8 +13,8 @@ train_set, base_set, eval_set = SIFT.get_datasets()
 def objective(trial):
     model = network.SiameseNet(network.EmbeddingNet())
     learning_rate = trial.suggest_float("learning_rate", 1e-5, 1e-2, log=True)
-    batch_size = 32768
-    num_epoches = 5
+    batch_size = 32768 * 2
+    num_epoches = 30
 
     verbose = False
     device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
