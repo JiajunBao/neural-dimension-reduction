@@ -109,7 +109,8 @@ def eval_with_query(base_loader, query_loader, model, device):
 
 
 def get_recall(gold: torch.tensor, pred: torch.tensor):
-    assert gold.shape == pred.shape, f'inconsistent shape: {gold.shape} vs {pred.shape}'
+    assert gold.shape[0] == pred.shape[0], f'inconsistent shape: {gold.shape} vs {pred.shape}'
+    print(f'retrieve {pred.shape[1]} data points for {gold.shape[1]} ground truth.')
     tp = 0
     gold_list, pred_list = gold.tolist(), pred.tolist()
     for i in range(gold.shape[0]):
