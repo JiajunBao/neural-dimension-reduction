@@ -115,7 +115,7 @@ def get_recall(gold: torch.tensor, pred: torch.tensor):
     gold_list, pred_list = gold.tolist(), pred.tolist()
     for i in range(gold.shape[0]):
         tp += len(set(gold_list[i]) & set(pred_list[i]))
-    tp_and_fn = pred.shape[0] * pred.shape[1]
+    tp_and_fn = gold.shape[0] * gold.shape[1]
     return tp / tp_and_fn
 
 
