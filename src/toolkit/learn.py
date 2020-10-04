@@ -99,21 +99,18 @@ def eval_with_query(base_loader, query_loader, model, device):
     index = faiss.IndexFlatL2(d)  # build the index
     index.add(embedded_base)  # add vectors to the index
 
-    base_neighbor_distance, base_neighbor_index = index.search(embedded_base, 20)  # actual search
-    query_neighbor_distance, query_neighbor_index = index.search(embedded_queries, 20)  # actual search
+    base_neighbor_distance, base_neighbor_index = index.search(embedded_base, base_loader.dataset.k * 10)  # actual search
+    query_neighbor_distance, query_neighbor_index = index.search(embedded_queries, query_loader.dataset.k * 10)  # actual search
 
-    recall_on_base_set = get_recall(base_loader.dataset.ground_true_nn[:, 1], base_neighbor_index)
-    recall_on_query_set = get_recall(query_loader.dataset.ground_true_nn[:, 0], query_neighbor_index)
+    recall_on_base_set = get_recall(base_loader.dataset.ground_true_nn, base_neighbor_index)
+    recall_on_query_set = get_recall(query_loader.dataset.ground_true_nn, query_neighbor_index)
     end = time.time()
     return recall_on_base_set, recall_on_query_set, base_neighbor_index, query_neighbor_index, end - start
 
 
 def get_recall(gold: torch.tensor, pred: torch.tensor):
     assert gold.shape[0] == pred.shape[0], f'inconsistent shape: {gold.shape} vs {pred.shape}'
-    print(f'retrieve {pred.shape} shape data points for {gold.shape} shape ground truth.')
-    print(type(gold))
-    # if len(gold.shape) == 1:
-    #    gold = gold.view(-1, 1)
+    print(f'retrieve {pred.shape[1]} data points for {gold.shape[1]} ground truth.')
     tp = 0
     gold_list, pred_list = gold.tolist(), pred.tolist()
     for i in range(gold.shape[0]):
