@@ -102,7 +102,7 @@ def eval_with_query(base_loader, query_loader, model, device):
     k: int = base_loader.dataset.k * 10
     base_neighbor_distance, base_neighbor_index = index.search(embedded_base, k)  # actual search
     query_neighbor_distance, query_neighbor_index = index.search(embedded_queries, k)  # actual search
-
+    print(type(base_neighbor_index))
     recall_on_base_set = get_recall(base_loader.dataset.ground_true_nn, base_neighbor_index)
     recall_on_query_set = get_recall(query_loader.dataset.ground_true_nn, query_neighbor_index)
     end = time.time()
@@ -110,7 +110,8 @@ def eval_with_query(base_loader, query_loader, model, device):
 
 
 def get_recall(gold: torch.tensor, pred: torch.tensor):
-    assert gold.shape[0] == pred.shape[0], f'inconsistent shape: {gold.shape} vs {pred.shape}'
+    # assert gold.shape[0] == pred.shape[0], f'inconsistent shape: {gold.shape} vs {pred.shape}'
+    print(f'gold.shape: {gold.shape} pred.shape: {pred.shape}')
     print(f'retrieve {pred.shape[1]} data points for {gold.shape[1]} ground truth.')
     tp = 0
     gold_list, pred_list = gold.tolist(), pred.tolist()
