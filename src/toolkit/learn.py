@@ -99,8 +99,9 @@ def eval_with_query(base_loader, query_loader, model, device):
     index = faiss.IndexFlatL2(d)  # build the index
     index.add(embedded_base)  # add vectors to the index
 
-    base_neighbor_distance, base_neighbor_index = index.search(embedded_base, base_loader.dataset.k * 10)  # actual search
-    query_neighbor_distance, query_neighbor_index = index.search(embedded_queries, query_loader.dataset.k * 10)  # actual search
+    k: int = base_loader.dataset.k * 10
+    base_neighbor_distance, base_neighbor_index = index.search(embedded_base, k)  # actual search
+    query_neighbor_distance, query_neighbor_index = index.search(embedded_queries, k)  # actual search
 
     recall_on_base_set = get_recall(base_loader.dataset.ground_true_nn, base_neighbor_index)
     recall_on_query_set = get_recall(query_loader.dataset.ground_true_nn, query_neighbor_index)
