@@ -5,7 +5,6 @@ import torch.utils.data
 from src.toolkit import learn
 from src.datasets import SIFT
 
-import optuna
 
 train_set, base_set, eval_set = SIFT.get_datasets()
 
@@ -44,7 +43,7 @@ def objective():
                                                                                              eval_loader, criterion,
                                                                                              model, optimizer,
                                                                                              num_epoches, log_epoch,
-                                                                                             verbose, device, trial)
+                                                                                             verbose, device, None)
     return best_recall_query_set, model
 
 
