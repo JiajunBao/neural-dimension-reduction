@@ -48,7 +48,7 @@ def objective():
 
 
 def main():
-    best_recall_query_set, model = objective
+    best_recall_query_set, model = objective()
     print(f'best recall on query set {best_recall_query_set}')
     torch.save(model, f'final-model.pt.{best_recall_query_set: .2f}')
 
