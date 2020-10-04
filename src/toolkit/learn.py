@@ -99,7 +99,7 @@ def eval_with_query(base_loader, query_loader, model, device):
     index = faiss.IndexFlatL2(d)  # build the index
     index.add(embedded_base)  # add vectors to the index
 
-    k: int = 1
+    k: int = 2
     base_neighbor_distance, base_neighbor_index = index.search(embedded_base, k)  # actual search
     query_neighbor_distance, query_neighbor_index = index.search(embedded_queries, k)  # actual search
     print(type(base_neighbor_index))
