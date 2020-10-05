@@ -113,6 +113,11 @@ def get_recall(gold: np.array, pred: np.array):
     # assert gold.shape[0] == pred.shape[0], f'inconsistent shape: {gold.shape} vs {pred.shape}'
     if len(pred.shape) == 1:
         pred = pred.reshape(-1, 1)
+
+    # the first column is the point itself which is not interesting
+    #
+    top_k_gold = 20
+    gold = gold[:, 1: 1 + top_k_gold]
     print(f'retrieve {pred.shape[1]} data points for {gold.shape[1]} ground truth.')
     tp = 0
     gold_list, pred_list = gold.tolist(), pred.tolist()
