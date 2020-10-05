@@ -5,6 +5,7 @@ import copy
 import random
 from tqdm.auto import tqdm
 import pandas as pd
+import numpy as np
 import faiss
 import time
 
@@ -102,15 +103,15 @@ def eval_with_query(base_loader, query_loader, model, device):
     k: int = 2
     base_neighbor_distance, base_neighbor_index = index.search(embedded_base, k)  # actual search
     query_neighbor_distance, query_neighbor_index = index.search(embedded_queries, k)  # actual search
-    print(type(base_neighbor_index))
     recall_on_base_set = get_recall(base_loader.dataset.ground_true_nn, base_neighbor_index)
     recall_on_query_set = get_recall(query_loader.dataset.ground_true_nn, query_neighbor_index)
     end = time.time()
     return recall_on_base_set, recall_on_query_set, base_neighbor_index, query_neighbor_index, end - start
 
 
-def get_recall(gold: torch.tensor, pred: torch.tensor):
+def get_recall(gold: np.array, pred: np.array):
     # assert gold.shape[0] == pred.shape[0], f'inconsistent shape: {gold.shape} vs {pred.shape}'
+    print('gold: ', type(gold))
     print(f'gold.shape: {gold.shape} pred.shape: {pred.shape}')
     print(f'retrieve {pred.shape[1]} data points for {gold.shape[1]} ground truth.')
     tp = 0
