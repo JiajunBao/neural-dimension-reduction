@@ -161,9 +161,10 @@ def get_datasets(input_dir: Path, model_type: str):
     else:
         train_dataset = LargeBaseDataset(train_x, k, True, True)
         torch.save(train_dataset, train_path)
-
+    print(f'saved train.learn set at {train_path}')
     base_dataset = QueryDataset(query_vecs=train_x, base_vecs=train_x, k=k)
     dev_dataset = QueryDataset(query_vecs=dev_x, base_vecs=train_x, k=k)
     torch.save(base_dataset, base_path)
     torch.save(dev_dataset, dev_path)
+    print(f'saved query set at {base_path} and {dev_path}')
     return train_dataset, base_dataset, dev_dataset
