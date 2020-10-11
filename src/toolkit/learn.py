@@ -74,13 +74,14 @@ def train_one_epoch(train_loader, model, optimizer, criterion, verbose, device):
             print(f'training loss: {train_margin_loss / (i + 1):.6f}')
 
     log = (None, None, None, None,)
+    demon = len(train_loader) if criterion.reduction == 'mean' else len(train_loader.dataset)
+    train_margin_loss /= demon
+
     if isinstance(model, network.SiameseNet):
         pred = torch.cat(pred_list, dim=0)
         gold = torch.cat(label_list, dim=0)
         dist = torch.cat(dist_list, dim=0)
-        demon = len(train_loader) if criterion.reduction == 'mean' else len(train_loader.dataset)
         log = (train_correct_pred / demon, pred, gold, dist)
-        train_margin_loss /= demon
     elif isinstance(model, network.ReconstructSiameseNet):
         pass
     return train_margin_loss, log
