@@ -135,7 +135,7 @@ class PairingDataset(Dataset):
         return self.x[i], self.x[j]
 
 
-def get_datasets(input_dir: Path=Path('/home/jiajunb/neural-dimension-reduction/data/sift/siftsmall'), model_type='SiameseNet'):
+def get_datasets(input_dir: Path, model_type: str):
     dev_path = input_dir / f'sift.dev.query.{model_type}.dataset.pt'
     train_path = input_dir / f'sift.train.learn.{model_type}.dataset.pt'
     base_path = input_dir / f'sift.train.query.{model_type}.dataset.pt'

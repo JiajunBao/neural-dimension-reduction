@@ -4,13 +4,24 @@ from torch.utils.data import DataLoader
 import torch.utils.data
 from src.toolkit import learn
 from src.datasets import SIFT
+import pathlib
+import argparse
 
-
-train_set, base_set, eval_set = SIFT.get_datasets()
+parser = argparse.ArgumentParser(description='training args')
+parser.add_argument('--data_path', default=pathlib.Path('/home/jiajunb/neural-dimension-reduction/data/sift/siftsmall'))
+parser.add_argument('--model_type', default='ReconstructSiameseNet')
+args = parser.parse_args()
+print('args: \n', args)
+train_set, base_set, eval_set = SIFT.get_datasets(args.data_path, args.model_type)
 
 
 def objective():
-    model = network.SiameseNet(network.EmbeddingNet())
+    if args.model_type == 'SiameseNet':
+        model = network.SiameseNet(network.EmbeddingNet())
+    elif args.model_type == 'ReconstructSiameseNet':
+        model = network.ReconstructSiameseNet(network.EmbeddingNet())
+    else:
+        raise NotImplementedError
     learning_rate = 0.009359
     batch_size = 32768
     num_epoches = 30
@@ -36,8 +47,10 @@ def objective():
 
     model = model.to(device)
 
-    margin = 10.8816
-    criterion = learn.PowerMarginLoss(margin, 'mean')
+    criterion = None
+    if isinstance(model, network.SiameseNet):
+        margin = 10.8816
+        criterion = learn.PowerMarginLoss(margin, 'mean')
 
     best_recall_query_set, its_recall_on_base_set, best_model, model = learn.train_with_eval(train_loader, base_loader,
                                                                                              eval_loader, criterion,
