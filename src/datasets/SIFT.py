@@ -161,6 +161,12 @@ def get_datasets(input_dir: Path, model_type: str):
     else:
         train_dataset = LargeBaseDataset(train_x, k, True, True)
         torch.save(train_dataset, train_path)
+
+    if dev_path.is_file() and base_path.is_file():
+        base_dataset = torch.load(base_path)
+        dev_dataset = torch.load(dev_path)
+        return train_dataset, base_dataset, dev_dataset
+
     print(f'saved train.learn set at {train_path}')
     base_dataset = QueryDataset(query_vecs=train_x, base_vecs=train_x, k=k)
     dev_dataset = QueryDataset(query_vecs=dev_x, base_vecs=train_x, k=k)
