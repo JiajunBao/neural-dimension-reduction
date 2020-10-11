@@ -63,7 +63,6 @@ def train_one_epoch(train_loader, model, optimizer, criterion, verbose, device):
             label_list.append(label.cpu())
             dist_list.append(dist.cpu())
             train_correct_pred += (pred == label.to(device)).sum().item()
-
         else:
             raise NotImplementedError
         model.zero_grad()  # reset gradient

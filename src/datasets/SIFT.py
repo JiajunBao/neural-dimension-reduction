@@ -118,11 +118,27 @@ class QueryDataset(Dataset):
     def __getitem__(self, idx):
         return self.query_vecs[idx], self.ground_true_nn[idx]
 
+class PairingDataset(Dataset):
+    def __init__(self, x):
+        self.x = x
+        n, d = x.shape
+        self.pair_idxs = list()
+        for i in range(n):
+            for j in range(n):
+                self.pair_idxs.append((i, j,))
 
-def get_datasets(input_dir: Path=Path('/home/jiajunb/neural-dimension-reduction/data/sift/siftsmall')):
-    dev_path = input_dir / 'sift.dev.query.dataset.pt'
-    train_path = input_dir / 'sift.train.learn.dataset.pt'
-    base_path = input_dir / 'sift.train.query.dataset.pt'
+    def __len__(self):
+        return len(self.pair_idxs)
+
+    def __getitem__(self, idx):
+        i, j = self.pair_idxs[idx]
+        return self.x[i], self.x[j]
+
+
+def get_datasets(input_dir: Path=Path('/home/jiajunb/neural-dimension-reduction/data/sift/siftsmall'), model_type='SiameseNet'):
+    dev_path = input_dir / f'sift.dev.query.{model_type}.dataset.pt'
+    train_path = input_dir / f'sift.train.learn.{model_type}.dataset.pt'
+    base_path = input_dir / f'sift.train.query.{model_type}.dataset.pt'
     if dev_path.is_file() and train_path.is_file() and base_path.is_file():
         print(f"loading dataset from {input_dir}")
         train_dataset = torch.load(train_path)
@@ -139,10 +155,15 @@ def get_datasets(input_dir: Path=Path('/home/jiajunb/neural-dimension-reduction/
 
     train_x, dev_x = x[:split_idx, :], x[split_idx:, :]
     print(f'training set: {train_x.shape[0]} points; dev set: {dev_x.shape[0]} points.')
-    train_dataset = LargeBaseDataset(train_x, k, True, True)
+    if model_type == 'ReconstructSiameseNet':
+        train_dataset = PairingDataset(train_x)
+        torch.save(train_dataset, train_path)
+    else:
+        train_dataset = LargeBaseDataset(train_x, k, True, True)
+        torch.save(train_dataset, train_path)
+
     base_dataset = QueryDataset(query_vecs=train_x, base_vecs=train_x, k=k)
     dev_dataset = QueryDataset(query_vecs=dev_x, base_vecs=train_x, k=k)
-    torch.save(train_dataset, train_path)
     torch.save(base_dataset, base_path)
     torch.save(dev_dataset, dev_path)
     return train_dataset, base_dataset, dev_dataset
