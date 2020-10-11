@@ -88,7 +88,7 @@ class Autoencoder(nn.Module):
         normed_x = self.norm_layer(x)
         low_embed = self.encoder(normed_x)
         reconstructed_embed = self.decoder(low_embed)
-        reconstructed_loss = (normed_x - reconstructed_embed).sum()
+        reconstructed_loss = (normed_x - reconstructed_embed).sum(dim=1)
         return low_embed, reconstructed_loss
 
     def get_embedding(self, x):
@@ -119,9 +119,9 @@ class ReconstructSiameseNet(nn.Module):
         embedded_x1, reconstruct_loss1 = self.embedding_net(x1)
         embedded_x2, reconstruct_loss2 = self.embedding_net(x2)
         assert len(x1.shape) == 2 and len(embedded_x1.shape) == 2
-        dist1 = torch.sum(((x1 - x2) / x1.shape[1]) ** 2)
-        dist2 = torch.sum(((x1 - x2) / embedded_x1.shape[1]) ** 2)
-        return reconstruct_loss1 + reconstruct_loss2 + (dist1 - dist2) ** 2
+        dist1 = torch.sum(((x1 - x2) / x1.shape[1]) ** 2, dim=1)
+        dist2 = torch.sum(((x1 - x2) / embedded_x1.shape[1]) ** 2, dim=1)
+        return (reconstruct_loss1 + reconstruct_loss2 + (dist1 - dist2) ** 2).mean()
 
     def get_embedding(self, x):
         return self.embedding_net(x)
