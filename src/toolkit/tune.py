@@ -21,7 +21,7 @@ def objective(trial):
     if args.model_type == 'SiameseNet':
         model = network.SiameseNet(network.EmbeddingNet())
     elif args.model_type == 'ReconstructSiameseNet':
-        model = network.ReconstructSiameseNet(network.EmbeddingNet())
+        model = network.ReconstructSiameseNet(network.Autoencoder())
     else:
         raise NotImplementedError
     learning_rate = trial.suggest_float("learning_rate", 1e-5, 1e-2, log=True)
