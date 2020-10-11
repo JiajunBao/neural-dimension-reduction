@@ -3,6 +3,7 @@ from torch import nn
 from torch.utils.data import Dataset, TensorDataset, DataLoader
 import copy
 import random
+import src.toolkit.network as network
 from tqdm.auto import tqdm
 import pandas as pd
 import numpy as np
@@ -53,27 +54,36 @@ def train_one_epoch(train_loader, model, optimizer, criterion, verbose, device):
     for i, batch in enumerate(train_loader):
         x1, x2, label = batch
         x1_device, x2_device = x1.to(device), x2.to(device)
-        output1, output2 = model(x1_device, x2_device)
-        loss, dist, pred = criterion.forward(output1, output2, label.to(device))
+        if isinstance(model, network.ReconstructSiameseNet):
+            loss = model(x1_device, x2_device)
+        elif isinstance(model, network.SiameseNet):
+            output1, output2 = model(x1_device, x2_device)
+            loss, dist, pred = criterion.forward(output1, output2, label.to(device))
+            pred_list.append(pred.cpu())
+            label_list.append(label.cpu())
+            dist_list.append(dist.cpu())
+            train_correct_pred += (pred == label.to(device)).sum().item()
 
-        pred_list.append(pred.cpu())
-        label_list.append(label.cpu())
-        dist_list.append(dist.cpu())
-        train_correct_pred += (pred == label.to(device)).sum().item()
-
+        else:
+            raise NotImplementedError
         model.zero_grad()  # reset gradient
         loss.backward()
         optimizer.step()
         train_margin_loss += loss.item()
         if verbose and i % 20 == 0:
             print(f'training loss: {train_margin_loss / (i + 1):.6f}')
-    pred = torch.cat(pred_list, dim=0)
-    gold = torch.cat(label_list, dim=0)
-    dist = torch.cat(dist_list, dim=0)
 
-    demon = len(train_loader) if criterion.reduction == 'mean' else len(train_loader.dataset)
-    return train_margin_loss / demon, \
-        (train_correct_pred / demon, pred, gold, dist)
+    log = (None, None, None, None,)
+    if isinstance(model, network.SiameseNet):
+        pred = torch.cat(pred_list, dim=0)
+        gold = torch.cat(label_list, dim=0)
+        dist = torch.cat(dist_list, dim=0)
+        demon = len(train_loader) if criterion.reduction == 'mean' else len(train_loader.dataset)
+        log = (train_correct_pred / demon, pred, gold, dist)
+        train_margin_loss /= demon
+    elif isinstance(model, network.ReconstructSiameseNet):
+        pass
+    return train_margin_loss, log
 
 
 def eval_with_query(base_loader, query_loader, model, device):
