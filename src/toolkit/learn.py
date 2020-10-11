@@ -52,11 +52,13 @@ def train_one_epoch(train_loader, model, optimizer, criterion, verbose, device):
     dist_list = list()
     train_correct_pred = 0
     for i, batch in enumerate(train_loader):
-        x1, x2, label = batch
-        x1_device, x2_device = x1.to(device), x2.to(device)
         if isinstance(model, network.ReconstructSiameseNet):
+            x1, x2 = batch
+            x1_device, x2_device = x1.to(device), x2.to(device)
             loss = model(x1_device, x2_device)
         elif isinstance(model, network.SiameseNet):
+            x1, x2, label = batch
+            x1_device, x2_device = x1.to(device), x2.to(device)
             output1, output2 = model(x1_device, x2_device)
             loss, dist, pred = criterion.forward(output1, output2, label.to(device))
             pred_list.append(pred.cpu())
