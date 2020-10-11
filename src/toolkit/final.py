@@ -13,6 +13,7 @@ parser.add_argument('--model_type', default='ReconstructSiameseNet')
 args = parser.parse_args()
 print('args: \n', args)
 train_set, base_set, eval_set = SIFT.get_datasets(args.data_path, args.model_type)
+print('dataset completed')
 
 
 def objective():
