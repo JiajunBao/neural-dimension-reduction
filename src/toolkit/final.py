@@ -12,7 +12,7 @@ parser.add_argument('--data_path', default=pathlib.Path('/home/jiajunb/neural-di
 parser.add_argument('--model_type', default='ReconstructSiameseNet')
 args = parser.parse_args()
 print('args: \n', args)
-train_set, base_set, eval_set = SIFT.get_datasets(args.data_path, args.model_type)
+train_set, base_set, eval_set = SIFT.get_datasets(args.data_path, args.model_type, True)
 print('dataset completed')
 
 

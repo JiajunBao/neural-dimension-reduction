@@ -143,11 +143,11 @@ class PairingDataset(Dataset):
         return self.x[i], self.x[j]
 
 
-def get_datasets(input_dir: Path, model_type: str):
+def get_datasets(input_dir: Path, model_type: str, overwritten: bool):
     dev_path = input_dir / f'sift.dev.query.{model_type}.dataset.pt'
     train_path = input_dir / f'sift.train.learn.{model_type}.dataset.pt'
     base_path = input_dir / f'sift.train.query.{model_type}.dataset.pt'
-    if dev_path.is_file() and train_path.is_file() and base_path.is_file():
+    if dev_path.is_file() and train_path.is_file() and base_path.is_file() and not overwritten:
         print(f"loading dataset from {input_dir}")
         train_dataset = torch.load(train_path)
         base_dataset = torch.load(base_path)
