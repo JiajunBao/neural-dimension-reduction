@@ -8,6 +8,7 @@ from tqdm.auto import tqdm
 import pandas as pd
 from collections import Counter
 import faiss
+from random import sample
 from pathlib import Path
 
 
@@ -118,14 +119,21 @@ class QueryDataset(Dataset):
     def __getitem__(self, idx):
         return self.query_vecs[idx], self.ground_true_nn[idx]
 
+
 class PairingDataset(Dataset):
-    def __init__(self, x):
+    def __init__(self, x, downsample):
         self.x = x
+        self.downsample = downsample
         n, d = x.shape
         self.pair_idxs = list()
         for i in range(n):
             for j in range(n):
                 self.pair_idxs.append((i, j,))
+        if downsample < 1:
+            l = int(downsample * len(self.pair_idxs))
+        else:
+            l = min(downsample, len(self.pair_idxs))
+        self.pair_idxs = sample(self.pair_idxs, l)
 
     def __len__(self):
         return len(self.pair_idxs)
@@ -156,7 +164,7 @@ def get_datasets(input_dir: Path, model_type: str):
     train_x, dev_x = x[:split_idx, :], x[split_idx:, :]
     print(f'training set: {train_x.shape[0]} points; dev set: {dev_x.shape[0]} points.')
     if model_type == 'ReconstructSiameseNet':
-        train_dataset = PairingDataset(train_x)
+        train_dataset = PairingDataset(train_x, 0.1)
         print('generated dataset')
         torch.save(train_dataset, train_path)
     else:
