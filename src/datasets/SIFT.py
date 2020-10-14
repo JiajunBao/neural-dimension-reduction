@@ -165,7 +165,7 @@ def get_datasets(input_dir: Path, model_type: str, overwritten: bool):
     train_x, dev_x = x[:split_idx, :], x[split_idx:, :]
     print(f'training set: {train_x.shape[0]} points; dev set: {dev_x.shape[0]} points.')
     if model_type == 'ReconstructSiameseNet':
-        train_dataset = PairingDataset(train_x, 0.1)
+        train_dataset = PairingDataset(train_x, 60000)
         print('generated dataset')
         torch.save(train_dataset, train_path)
     else:
