@@ -123,6 +123,7 @@ class QueryDataset(Dataset):
 class PairingDataset(Dataset):
     def __init__(self, x, downsample):
         self.x = x
+        print('downsample: ', downsample)
         self.downsample = downsample
         n, d = x.shape
         self.pair_idxs = list()
