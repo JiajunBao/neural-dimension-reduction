@@ -97,6 +97,7 @@ def eval_with_query(base_loader, query_loader, model, device):
     with torch.no_grad():
         for i, batch in enumerate(base_loader):
             # infer embeddings for all base vectors
+            print('query_vecs', query_vecs)
             query_vecs, _ = batch
             embedded_batch = model.get_embedding(query_vecs.to(device))
             print(embedded_batch)
@@ -106,6 +107,7 @@ def eval_with_query(base_loader, query_loader, model, device):
         for i, batch in enumerate(query_loader):
             # infer embeddings for query loader
             query_vecs, _ = batch
+            print('query_vecs', query_vecs)
             embedded_batch = model.get_embedding(query_vecs.to(device))
             print(embedded_batch)
             embedded_queries.append(embedded_batch)
