@@ -75,7 +75,8 @@ def train_one_epoch(train_loader, model, optimizer, criterion, verbose, device):
             print(f'training loss: {train_margin_loss / (i + 1):.6f}')
 
     log = (None, None, None, None,)
-    demon = len(train_loader) if criterion.reduction == 'mean' else len(train_loader.dataset)
+    # demon = len(train_loader) if criterion.reduction == 'mean' else len(train_loader.dataset)
+    demon = len(train_loader.dataset)
     train_margin_loss /= demon
 
     if isinstance(model, network.SiameseNet):
@@ -97,13 +98,16 @@ def eval_with_query(base_loader, query_loader, model, device):
         for i, batch in enumerate(base_loader):
             # infer embeddings for all base vectors
             query_vecs, _ = batch
-            embedded_batch = model.get_embedding(query_vecs.to(device)).cpu()
+            embedded_batch = model.get_embedding(query_vecs.to(device))
+            print(embedded_batch)
             embedded_base.append(embedded_batch)
-
+        print('\n\n\n\n')
+        print('step2\n')
         for i, batch in enumerate(query_loader):
             # infer embeddings for query loader
             query_vecs, _ = batch
-            embedded_batch = model.get_embedding(query_vecs.to(device)).cpu()
+            embedded_batch = model.get_embedding(query_vecs.to(device))
+            print(embedded_batch)
             embedded_queries.append(embedded_batch)
 
     embedded_queries = torch.cat(embedded_queries, dim=0).numpy()
