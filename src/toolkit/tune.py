@@ -24,7 +24,7 @@ def objective(trial):
         model = network.ReconstructSiameseNet(network.Autoencoder())
     else:
         raise NotImplementedError
-    learning_rate = trial.suggest_float("learning_rate", 1e-5, 1e-2, log=True)
+    learning_rate = trial.suggest_float("learning_rate", 1e-5, 1e-1, log=True)
     batch_size = 128
     num_epoches = 10
 
