@@ -26,7 +26,7 @@ def objective(trial):
         raise NotImplementedError
     learning_rate = trial.suggest_float("learning_rate", 1e-5, 1e-1, log=True)
     batch_size = 128
-    num_epoches = 10
+    num_epoches = 100
 
     verbose = True
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
