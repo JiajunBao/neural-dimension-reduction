@@ -124,5 +124,6 @@ class ReconstructSiameseNet(nn.Module):
         return (reconstruct_loss1 + reconstruct_loss2 + (dist1 - dist2) ** 2).mean()
 
     def get_embedding(self, x):
-        return self.embedding_net(x)
+        embedded_x, _ = self.embedding_net(x)
+        return embedded_x
 
