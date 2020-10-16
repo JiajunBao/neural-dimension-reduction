@@ -25,7 +25,7 @@ def objective(trial):
     else:
         raise NotImplementedError
     learning_rate = trial.suggest_float("learning_rate", 1e-5, 1e-2, log=True)
-    batch_size = 32768
+    batch_size = 128
     num_epoches = 10
 
     verbose = True

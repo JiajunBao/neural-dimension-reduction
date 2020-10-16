@@ -24,7 +24,7 @@ def objective():
     else:
         raise NotImplementedError
     learning_rate = 0.009359
-    batch_size = 32768
+    batch_size = 128
     num_epoches = 30
 
     verbose = True
