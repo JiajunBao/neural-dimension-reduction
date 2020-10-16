@@ -23,9 +23,9 @@ def objective():
         model = network.ReconstructSiameseNet(network.Autoencoder())
     else:
         raise NotImplementedError
-    learning_rate = 0.009359
+    learning_rate = 1.0
     batch_size = 128
-    num_epoches = 30
+    num_epoches = 300
 
     verbose = True
     device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
