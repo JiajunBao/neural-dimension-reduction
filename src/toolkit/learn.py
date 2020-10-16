@@ -113,8 +113,8 @@ def eval_with_query(base_loader, query_loader, model, device):
             # print(embedded_batch)
             embedded_queries.append(embedded_batch)
 
-    embedded_queries = torch.cat(embedded_queries, dim=0).numpy()
-    embedded_base = torch.cat(embedded_base, dim=0).numpy()
+    embedded_queries = torch.cat(embedded_queries, dim=0).cpu().numpy()
+    embedded_base = torch.cat(embedded_base, dim=0).cpu().numpy()
     n, d = embedded_base.shape
     index = faiss.IndexFlatL2(d)  # build the index
     index.add(embedded_base)  # add vectors to the index
