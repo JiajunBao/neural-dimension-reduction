@@ -88,7 +88,7 @@ class Autoencoder(nn.Module):
         normed_x = self.norm_layer(x)
         low_embed = self.encoder(normed_x)
         reconstructed_embed = self.decoder(low_embed)
-        reconstructed_loss = (normed_x - reconstructed_embed).sum(dim=1)
+        reconstructed_loss = ((normed_x - reconstructed_embed) ** 2).sum(dim=1)
         return low_embed, reconstructed_loss
 
     def get_embedding(self, x):
