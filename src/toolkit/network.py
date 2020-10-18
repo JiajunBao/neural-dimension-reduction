@@ -52,22 +52,27 @@ class Autoencoder(nn.Module):
         self.encoder = nn.Sequential(
             OrderedDict([
                 ('fc0', nn.Linear(128, 128)),
+                ('drop0', nn.Dropout(0.5, True)),
                 ('relu0', nn.ReLU(inplace=True)),
                 ('bn0', nn.BatchNorm1d(128)),
 
                 ('fc1', nn.Linear(128, 128)),
+                ('drop1', nn.Dropout(0.5, True)),
                 ('relu1', nn.ReLU(inplace=True)),
                 ('bn1', nn.BatchNorm1d(128)),
 
                 ('fc2', nn.Linear(128, 64)),
+                ('drop2', nn.Dropout(0.5, True)),
                 ('relu2', nn.ReLU(inplace=True)),
                 ('bn2', nn.BatchNorm1d(64)),
 
                 ('fc3', nn.Linear(64, 32)),
+                ('drop3', nn.Dropout(0.5, True)),
                 ('relu3', nn.ReLU(inplace=True)),
                 ('bn3', nn.BatchNorm1d(32)),
 
                 ('fc4', nn.Linear(32, 32)),
+                ('drop4', nn.Dropout(0.5, True)),
                 ('relu4', nn.ReLU(inplace=True)),
                 ('bn4', nn.BatchNorm1d(32)),
             ])
@@ -75,10 +80,12 @@ class Autoencoder(nn.Module):
         self.decoder = nn.Sequential(
             OrderedDict([
                 ('fc5', nn.Linear(32, 64)),
+                ('drop5', nn.Dropout(0.5, True)),
                 ('relu5', nn.ReLU(inplace=True)),
                 ('bn5', nn.BatchNorm1d(64)),
 
                 ('fc6', nn.Linear(64, 128)),
+                ('drop6', nn.Dropout(0.5, True)),
                 ('relu6', nn.ReLU(inplace=True)),
                 ('bn6', nn.BatchNorm1d(128)),
             ])
