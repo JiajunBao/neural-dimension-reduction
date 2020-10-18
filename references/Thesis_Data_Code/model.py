@@ -53,6 +53,7 @@ class DeepNet(Module):
         for hidden_size in hidden_sizes:
             size_2 = hidden_size
             self.hidden_layers.append(nn.Linear(size_1, size_2).to(device))
+            self.hidden_layers.append(nn.Dropout(0.5, True).to(device))
             size_1 = hidden_size
         self.output = nn.Linear(size_1, output_size).to(device)
 
