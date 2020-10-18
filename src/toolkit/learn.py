@@ -163,8 +163,8 @@ def train_with_eval(train_loader, base_loader, eval_query_loader, criterion, mod
             best_model = copy.deepcopy(model.cpu())
         if verbose and epoch_idx % log_epoch == 0:
             print(f'epoch [{epoch_idx}]/[{num_epoches}] training loss: {avg_train_loss:.6f} '
-                  f'recall on query set: {best_recall_query_set:.2f} '
-                  f'recall on base set: {its_recall_on_base_set: .2f}')
+                  f'recall on query set: {best_recall_query_set:.3f} '
+                  f'recall on base set: {its_recall_on_base_set: .3f}')
         if trial:
             trial.report(best_recall_query_set, epoch_idx)
     end = time.time()

@@ -145,9 +145,10 @@ class PairingDataset(Dataset):
 
 
 def get_datasets(input_dir: Path, model_type: str, overwritten: bool):
-    dev_path = input_dir / f'sift.dev.query.{model_type}.dataset.pt'
-    train_path = input_dir / f'sift.train.learn.{model_type}.dataset.pt'
-    base_path = input_dir / f'sift.train.query.{model_type}.dataset.pt'
+    sample_size = 50000
+    dev_path = input_dir / f'sift.dev.query.{model_type}.dataset.{sample_size}.pt'
+    train_path = input_dir / f'sift.train.learn.{model_type}.dataset.{sample_size}.pt'
+    base_path = input_dir / f'sift.train.query.{model_type}.dataset.{sample_size}.pt'
     if dev_path.is_file() and train_path.is_file() and base_path.is_file() and not overwritten:
         print(f"loading dataset from {input_dir}")
         train_dataset = torch.load(train_path)
@@ -165,7 +166,7 @@ def get_datasets(input_dir: Path, model_type: str, overwritten: bool):
     train_x, dev_x = x[:split_idx, :], x[split_idx:, :]
     print(f'training set: {train_x.shape[0]} points; dev set: {dev_x.shape[0]} points.')
     if model_type == 'ReconstructSiameseNet':
-        train_dataset = PairingDataset(train_x, 60000)
+        train_dataset = PairingDataset(train_x, sample_size)
         print('generated dataset')
         torch.save(train_dataset, train_path)
     else:

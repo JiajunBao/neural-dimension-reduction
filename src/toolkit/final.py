@@ -23,12 +23,12 @@ def objective():
         model = network.ReconstructSiameseNet(network.Autoencoder())
     else:
         raise NotImplementedError
-    learning_rate = 1.0
-    batch_size = 128
+    learning_rate = 0.001
+    batch_size = 64
     num_epoches = 300
 
     verbose = True
-    device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
+    device = 'cuda:1' if torch.cuda.is_available() else 'cpu'
     weight_decay = 5.969e-7
     log_epoch = 1
     # optimizer
@@ -64,7 +64,7 @@ def objective():
 def main():
     best_recall_query_set, model = objective()
     print(f'best recall on query set {best_recall_query_set}')
-    torch.save(model, f'final-model.pt.{best_recall_query_set: .2f}')
+    torch.save(model, f'final-model.pt.{best_recall_query_set: .3f}')
 
 
 if __name__ == '__main__':
