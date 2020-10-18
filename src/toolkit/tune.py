@@ -25,11 +25,11 @@ def objective(trial):
     else:
         raise NotImplementedError
     learning_rate = trial.suggest_float("learning_rate", 1e-5, 1e-1, log=True)
-    batch_size = 128
+    batch_size = 128 * 4
     num_epoches = 100
 
     verbose = True
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    device = 'cuda:1' if torch.cuda.is_available() else 'cpu'
     weight_decay = trial.suggest_float("weight_decay", 1e-7, 1e-4, log=True)
     log_epoch = 1
     # optimizer
@@ -65,7 +65,7 @@ def objective(trial):
 def main():
     study = optuna.create_study(direction="maximize")
 
-    study.optimize(objective, n_trials=20, timeout=None)
+    study.optimize(objective, n_trials=2000, timeout=None)
 
     print("Study statistics: ")
     print("  Number of finished trials: ", len(study.trials))
